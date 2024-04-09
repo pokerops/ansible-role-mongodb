@@ -93,7 +93,7 @@
       block:
         - name: Include mongodb role
           ansible.builtin.include_role:
-            name: wpnops.mongodb
+            name: pokerops.mongodb
             apply:
               become: true
           vars:

@@ -54,7 +54,7 @@
 
             - name: Configure cluster members
               ansible.builtin.include_role:
-                name: wpnops.mongodb
+                name: pokerops.mongodb
               vars:
                 mongodb_replicaset_members: "{{ _config_members }}"
 
@@ -82,7 +82,7 @@
           block:
             - name: Scale down to 2 node cluster
               ansible.builtin.include_role:
-                name: wpnops.mongodb
+                name: pokerops.mongodb
               vars:
                 _map_format: 'nephelaiio.plugins.map_format'
                 _addr_attrs: ['ansible_default_ipv4', 'address']
@@ -114,7 +114,7 @@
 
             - name: Configure cluster members
               ansible.builtin.include_role:
-                name: wpnops.mongodb
+                name: pokerops.mongodb
               vars:
                 mongodb_replicaset_members: "{{ _config_members }}"
 
@@ -142,7 +142,7 @@
           block:
             - name: Scale down to 4 node cluster
               ansible.builtin.include_role:
-                name: wpnops.mongodb
+                name: pokerops.mongodb
               vars:
                 _map_format: 'nephelaiio.plugins.map_format'
                 _addr_attrs: ['ansible_default_ipv4', 'address']
@@ -174,7 +174,7 @@
 
             - name: Configure cluster members
               ansible.builtin.include_role:
-                name: wpnops.mongodb
+                name: pokerops.mongodb
               vars:
                 mongodb_replicaset_members: "{{ _config_members }}"
 
@@ -202,7 +202,7 @@
           block:
             - name: Scale down to 6 node cluster
               ansible.builtin.include_role:
-                name: wpnops.mongodb
+                name: pokerops.mongodb
               vars:
                 _map_format: 'nephelaiio.plugins.map_format'
                 _addr_attrs: ['ansible_default_ipv4', 'address']
@@ -236,7 +236,7 @@
 
                 - name: Configure cluster members
                   ansible.builtin.include_role:
-                    name: wpnops.mongodb
+                    name: pokerops.mongodb
                   vars:
                     mongodb_replicaset_members: "{{ _config_members }}"
 
@@ -276,7 +276,7 @@
 
                 - name: Configure cluster members
                   ansible.builtin.include_role:
-                    name: wpnops.mongodb
+                    name: pokerops.mongodb
                   vars:
                     mongodb_replicaset_members: "{{ _config_members }}"
 
@@ -304,7 +304,7 @@
           block:
             - name: Scale down to 1 node cluster
               ansible.builtin.include_role:
-                name: wpnops.mongodb
+                name: pokerops.mongodb
               vars:
                 _map_format: 'nephelaiio.plugins.map_format'
                 _addr_attrs: ['ansible_default_ipv4', 'address']

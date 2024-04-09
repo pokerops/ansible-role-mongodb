@@ -26,7 +26,7 @@
       block:
         - name: Include mongodb role
           ansible.builtin.include_role:
-            name: wpnops.mongodb
+            name: pokerops.mongodb
           vars:
             _map_format: 'nephelaiio.plugins.map_format'
             _addr_attrs: ['ansible_default_ipv4', 'address']
