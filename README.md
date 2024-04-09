@@ -1,9 +1,9 @@
-# wpnops.mongodb
+# pokerops.mongodb
 
-[![Build Status](https://github.com/wpnops/ansible-role-mongodb/actions/workflows/molecule.yml/badge.svg)](https://github.com/wpnops/ansible-role-mongodb/actions/workflows/molecule.yml)
-[![Ansible Galaxy](http://img.shields.io/badge/ansible--galaxy-wpnops.mongodb-blue.svg)](https://galaxy.ansible.com/wpninfra/mongodb/)
+[![Build Status](https://github.com/pokerops/ansible-role-mongodb/actions/workflows/molecule.yml/badge.svg)](https://github.com/pokerops/ansible-role-mongodb/actions/workflows/molecule.yml))](https://github.com/wpnops/ansible-role-mongodb/actions/workflows/molecule.yml)
+[![Ansible Galaxy](http://img.shields.io/badge/ansible--galaxy-pokerops.mongodb-blue.svg)](https://galaxy.ansible.com/pokerops/mongodb/)
 
-An [ansible role](https://galaxy.ansible.com/wpninfra/mongodb) to install and configure mongodb
+An [ansible role](https://galaxy.ansible.com/pokerops/mongodb) to install and configure mongodb
 
 ## Role Variables
 
@@ -18,7 +18,7 @@ Role depends on filters defined in collection [nephelaiio.plugins](https://githu
 ```
 - hosts: servers
   roles:
-     - role: wpnops.mongodb
+     - role: pokerops.mongodb
 ```
 
 ## Testing

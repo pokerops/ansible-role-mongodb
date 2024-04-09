@@ -10,7 +10,7 @@ on:
 
 defaults:
   run:
-    working-directory: 'wpnops.mongodb'
+    working-directory: 'pokerops.mongodb'
 
 jobs:
   molecule:
@@ -38,7 +38,7 @@ jobs:
       - name: Check out the codebase
         uses: actions/checkout@v4
         with:
-          path: 'wpnops.mongodb'
+          path: 'pokerops.mongodb'
 
       - name: Set up python 3
         uses: actions/setup-python@v5
