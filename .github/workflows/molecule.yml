@@ -24,7 +24,7 @@ jobs:
           - name: ufw
           - name: replicaset
         image:
-          - name: ubuntu2204
+          - name: ubuntu2004
             command: /lib/systemd/systemd
           - name: ubuntu2204
             command: /lib/systemd/systemd

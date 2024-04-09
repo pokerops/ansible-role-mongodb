@@ -1,6 +1,6 @@
 ---
 - name: Configure 3 replicaset nodes
-  hosts: "{{ groups['all'][:3] | join(':') }}"
+  hosts: "{{ play_hosts[-3:] }}"
   tasks:
     - name: Create virtualenv
       ansible.builtin.tempfile:

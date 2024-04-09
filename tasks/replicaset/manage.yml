@@ -13,83 +13,44 @@
       until: mongodb_status is succeeded
       ignore_errors: true
       changed_when: false
+
+    - name: Set MongoDB replicaset member facts
+      ansible.builtin.set_fact:
+        _replicaset_alien: "{{ _is_alien | bool }}"
+        _replicaset_member: "{{ _is_member | bool }}"
+      vars:
+        _status: "{{ mongodb_status }}"
+        _has_failed: "{{ _status.failed | bool }}"
+        _message: "{{ _status.msg }}"
+        _is_alien: "{{ _has_failed and (_message is search('no replset config has been received')) }}"
+        _is_member: "{{ not _has_failed and not _is_alien }}"
+
+    - name: Group MongoDB members
+      ansible.builtin.group_by:
+        key: "_replicaset_{{ 'alien' if _replicaset_alien else _status }}"
+      vars:
+        _status: "{{ 'member' if _replicaset_member else 'failed' }}"
+      changed_when: false
+
+    - name: Compute MongoDB member facts
+      ansible.builtin.set_fact:
+        replicaset_aliens: "{{ groups['_replicaset_alien'] | default([]) }}"
+        replicaset_members: "{{ groups['_replicaset_member'] | default([]) }}"
+        replicaset_failures: "{{ groups['_replicaset_failed'] | default([]) }}"
+
+    - name: Verify MongoDB replicaset status
+      ansible.builtin.assert:
+        that:
+          - (replicaset_members | length > 0) or (replicaset_aliens | length > 0)
+          - replicaset_failures | length == 0
       run_once: true
-
-    - name: Set MongoDB member facts
-      ansible.builtin.set_fact:
-        _existing_members: "{{ [] if mongodb_status is failed else _member_names }}"
-      vars:
-        _member_list: "{{ mongodb_status.transformed_output | list }}"
-        _member_names: "{{ _member_list | map(attribute='name') }}"
-
-    - name: Debug target members
-      ansible.builtin.debug:
-        msg: "Target members are [{{ mongodb_replicaset_members | join(',') }}]"
-
-    - name: Debug cluster facts
-      ansible.builtin.debug:
-        msg: "Detected cluster members [{{ _existing_members | join(',') }}]"
-
-    - name: Build address fact dictionary
-      ansible.builtin.set_fact:
-        _revaddrs: "{{ _host_addrs | zip(_hosts) | community.general.dict }}"
-        _fwdaddrs: "{{ _hosts | zip(_host_addrs) | community.general.dict }}"
-        _map_format: 'nephelaiio.plugins.map_format'
-        _split_with: 'nephelaiio.plugins.split_with'
-      vars:
-        _hosts: "{{ ansible_play_hosts }}"
-        _host_addrs: "{{ _hosts | map('extract', hostvars, ['ansible_default_ipv4', 'address']) }}"
-
-    - name: Detect new cluster members
-      ansible.builtin.set_fact:
-        _mongodb_add_members: "{{ _add_members }}"
-      vars:
-        _existing_hosts: "{{ _existing_members | map(_split_with, ':') | map('first') }}"
-        _existing_inventory: "{{ _existing_hosts | select('in', _fwdaddrs) }}"
-        _existing_inventory_addrs: "{{ _existing_inventory | map('extract', _fwdaddrs) }}"
-        _existing_host_addrs: "{{ _existing_hosts | ansible.utils.ipaddr }}"
-        _existing_addrs: "{{ _existing_inventory_addrs + _existing_host_addrs }}"
-        _existing_iphosts: "{{ _existing_addrs | map(_map_format, '%s:' + mongodb_port) }}"
-        _existing_revaddrs: "{{ _existing_addrs | select('in', _revaddrs) }}"
-        _existing_revnames: "{{ _existing_revaddrs | map('extract', _revaddrs) }}"
-        _existing_revhosts: "{{ _existing_revnames | map(_map_format, '%s:' + mongodb_port) }}"
-        _existing_hostaddrs: "{{ _existing_members + _existing_iphosts + _existing_revhosts }}"
-        _add_members: "{{ mongodb_replicaset_members | reject('in', _existing_hostaddrs) }}"
-
-    - name: Debug new cluster members
-      ansible.builtin.debug:
-        msg: "Adding cluster members [{{ _mongodb_add_members | join(',') }}]"
-
-    - name: Detect stale cluster hosts
-      ansible.builtin.set_fact:
-        _mongodb_delete_members: "{{ _delete_members }}"
-      vars:
-        _target_members: "{{ mongodb_replicaset_members }}"
-        _target_hosts: "{{ _target_members | map(_split_with, ':') | map('first') }}"
-        _target_inventory: "{{ _target_hosts | select('in', _fwdaddrs) }}"
-        _target_inventory_addrs: "{{ _target_inventory | map('extract', _fwdaddrs) }}"
-        _target_host_addrs: "{{ _target_hosts | ansible.utils.ipaddr }}"
-        _target_addrs: "{{ _target_inventory_addrs + _target_host_addrs }}"
-        _target_iphosts: "{{ _target_addrs | map(_map_format, '%s:' + mongodb_port) }}"
-        _target_revaddrs: "{{ _target_addrs | select('in', _revaddrs) }}"
-        _target_revnames: "{{ _target_revaddrs | map('extract', _revaddrs) }}"
-        _target_revhosts: "{{ _target_revnames | map(_map_format, '%s:' + mongodb_port) }}"
-        _target_hostaddrs: "{{ _target_members + _target_iphosts + _target_revhosts }}"
-        _delete_members: "{{ _existing_members | reject('in', _target_hostaddrs) }}"
-
-    - name: Debug stale cluster members
-      ansible.builtin.debug:
-        msg: "Removing cluster members [{{ _mongodb_delete_members | join(',') }}]"
-
-    - name: Set cluster init state
-      ansible.builtin.set_fact:
-        _replicaset_initialized: "{{ _existing_members | length > 0 }}"
 
     - name: Initialize MongoDB replicaset
       run_once: true
       when:
-        - not (_replicaset_initialized | bool)
         - mongodb_replicaset_init | bool
+        - replicaset_members | length == 0
+        - replicaset_aliens | length > 0
       block:
         - name: Create MongoDB replicaset
           community.mongodb.mongodb_replicaset:
@@ -121,32 +82,101 @@
       ansible.builtin.set_fact:
         replicaset_primary: "{{ mongodb_rs.transformed_output | list | first | bool }}"
 
-    - name: Manage MongoDB replicaset members
+    - name: Manage existing MongoDB replicaset
       when:
-        - _replicaset_initialized | bool
-        - (_mongodb_add_members + _mongodb_delete_members) | length > 0
-        - replicaset_primary | bool
-        - mongodb_replicaset_update | bool
+        - mongodb_replicaset_init | bool
+        - replicaset_members | length > 0
       block:
-        - name: Gather MongoDB version
-          community.mongodb.mongodb_info:
-            filter: general
-          changed_when: false
-          register: mongodb_installed_version
-
-        - name: Add new MongoDB replicaset members
-          ansible.builtin.include_tasks: "reconfigure.yml"
+        - name: Build address fact dictionary
+          ansible.builtin.set_fact:
+            _revaddrs: "{{ _host_addrs | zip(_hosts) | community.general.dict }}"
+            _fwdaddrs: "{{ _hosts | zip(_host_addrs) | community.general.dict }}"
+            _map_format: 'nephelaiio.plugins.map_format'
+            _split_with: 'nephelaiio.plugins.split_with'
           vars:
-            _add_member: true
-            _mongodb_info: "{{ mongodb_installed_version.general }}"
-            _mongodb_version: "{{ _mongodb_info.version }}"
-          loop: "{{ _mongodb_add_members }}"
+            _hosts: "{{ ansible_play_hosts }}"
+            _host_addrs: "{{ _hosts | map('extract', hostvars, ['ansible_default_ipv4', 'address']) }}"
 
-        - name: Remove stale MongoDB replicaset members
-          ansible.builtin.include_tasks: "reconfigure.yml"
+        - name: Set MongoDB member facts
+          ansible.builtin.set_fact:
+            _existing_members: "{{ _existing_addrs | map(_map_format, '%s:' + mongodb_port) }}"
           vars:
-            _remove_member: true
-          loop: "{{ _mongodb_delete_members }}"
+            _existing_addrs: "{{ replicaset_members | map('extract', hostvars, ['ansible_default_ipv4', 'address']) }}"
+
+        - name: Detect new cluster members
+          ansible.builtin.set_fact:
+            _mongodb_add_members: "{{ _add_members }}"
+          vars:
+            _existing_hosts: "{{ _existing_members | map(_split_with, ':') | map('first') }}"
+            _existing_inventory: "{{ _existing_hosts | select('in', _fwdaddrs) }}"
+            _existing_inventory_addrs: "{{ _existing_inventory | map('extract', _fwdaddrs) }}"
+            _existing_host_addrs: "{{ _existing_hosts | ansible.utils.ipaddr }}"
+            _existing_addrs: "{{ _existing_inventory_addrs + _existing_host_addrs }}"
+            _existing_iphosts: "{{ _existing_addrs | map(_map_format, '%s:' + mongodb_port) }}"
+            _existing_revaddrs: "{{ _existing_addrs | select('in', _revaddrs) }}"
+            _existing_revnames: "{{ _existing_revaddrs | map('extract', _revaddrs) }}"
+            _existing_revhosts: "{{ _existing_revnames | map(_map_format, '%s:' + mongodb_port) }}"
+            _existing_hostaddrs: "{{ _existing_members + _existing_iphosts + _existing_revhosts }}"
+            _add_members: "{{ mongodb_replicaset_members | reject('in', _existing_hostaddrs) }}"
+
+        - name: Detect stale cluster hosts
+          ansible.builtin.set_fact:
+            _mongodb_delete_members: "{{ _delete_members }}"
+          vars:
+            _target_members: "{{ mongodb_replicaset_members }}"
+            _target_hosts: "{{ _target_members | map(_split_with, ':') | map('first') }}"
+            _target_inventory: "{{ _target_hosts | select('in', _fwdaddrs) }}"
+            _target_inventory_addrs: "{{ _target_inventory | map('extract', _fwdaddrs) }}"
+            _target_host_addrs: "{{ _target_hosts | ansible.utils.ipaddr }}"
+            _target_addrs: "{{ _target_inventory_addrs + _target_host_addrs }}"
+            _target_iphosts: "{{ _target_addrs | map(_map_format, '%s:' + mongodb_port) }}"
+            _target_revaddrs: "{{ _target_addrs | select('in', _revaddrs) }}"
+            _target_revnames: "{{ _target_revaddrs | map('extract', _revaddrs) }}"
+            _target_revhosts: "{{ _target_revnames | map(_map_format, '%s:' + mongodb_port) }}"
+            _target_hostaddrs: "{{ _target_members + _target_iphosts + _target_revhosts }}"
+            _delete_members: "{{ _existing_members | reject('in', _target_hostaddrs) }}"
+
+        - name: Debug target members
+          ansible.builtin.debug:
+            msg: "Target members are [{{ mongodb_replicaset_members | join(',') }}]"
+
+        - name: Debug cluster facts
+          ansible.builtin.debug:
+            msg: "Detected cluster members [{{ _existing_members | join(',') }}]"
+
+        - name: Debug new cluster members
+          ansible.builtin.debug:
+            msg: "Adding cluster members [{{ _mongodb_add_members | join(',') }}]"
+
+        - name: Debug stale cluster members
+          ansible.builtin.debug:
+            msg: "Removing cluster members [{{ _mongodb_delete_members | join(',') }}]"
+
+        - name: Manage MongoDB replicaset members
+          when:
+            - (_mongodb_add_members + _mongodb_delete_members) | length > 0
+            - replicaset_primary | bool
+            - mongodb_replicaset_update | bool
+          block:
+            - name: Gather MongoDB version
+              community.mongodb.mongodb_info:
+                filter: general
+              changed_when: false
+              register: mongodb_installed_version
+
+            - name: Add new MongoDB replicaset members
+              ansible.builtin.include_tasks: "reconfigure.yml"
+              vars:
+                _add_member: true
+                _mongodb_info: "{{ mongodb_installed_version.general }}"
+                _mongodb_version: "{{ _mongodb_info.version }}"
+              loop: "{{ _mongodb_add_members }}"
+
+            - name: Remove stale MongoDB replicaset members
+              ansible.builtin.include_tasks: "reconfigure.yml"
+              vars:
+                _remove_member: true
+              loop: "{{ _mongodb_delete_members }}"
 
     - name: Allow read operations on secondary replicaset members
       community.mongodb.mongodb_shell:
