@@ -1,6 +1,6 @@
 # pokerops.mongodb
 
-[![Build Status](https://github.com/pokerops/ansible-role-mongodb/actions/workflows/molecule.yml/badge.svg)](https://github.com/pokerops/ansible-role-mongodb/actions/workflows/molecule.yml))](https://github.com/wpnops/ansible-role-mongodb/actions/workflows/molecule.yml)
+[![Build Status](https://github.com/pokerops/ansible-role-mongodb/workflows/molecule/badge.svg)](https://github.com/pokerops/ansible-role-mongodb/actions)
 [![Ansible Galaxy](http://img.shields.io/badge/ansible--galaxy-pokerops.mongodb-blue.svg)](https://galaxy.ansible.com/pokerops/mongodb/)
 
 An [ansible role](https://galaxy.ansible.com/pokerops/mongodb) to install and configure mongodb
