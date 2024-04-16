@@ -27,35 +27,20 @@
           - "{{ ansible_os_family | lower }}"
           - "default"
 
-    - name: Verify MongoDB packages
-      ansible.builtin.fail:
-        msg: _mongodb_packages must be set and not empty
-      when: _mongodb_packages | default([]) | length == 0
-
-    - name: Verify MongoDB pip packages
-      ansible.builtin.fail:
-        msg: mongodb_pip_packages must be set and not empty
-      when: mongodb_pip_packages | default([]) | length == 0
-
-    - name: Verify MongoDB sharding role
-      ansible.builtin.fail:
-        msg: "mongodb_sharding_roles must be one of [{{ _roles | join(', ') }}], got '{{ _role }}''"
+    - name: Verify MongoDB pre-requisites
+      ansible.builtin.assert:
+        that:
+          - _mongodb_packages | default([]) | length > 0
+          - mongodb_pip_packages | default([]) | length > 0
+          - _role != ''
+          - _role in _roles
+          - mongodb_replicaset_name | default('') != ''
+          - _member_count | int > 1
+          - _member_count | int is odd
       vars:
         _role: "{{ mongodb_sharding_role }}"
         _roles: ['configsvr', 'shardsvr']
-      when:
-        - _role != ''
-        - _role not in _roles
-
-    - name: Verify MongoDB replicaset member count
-      ansible.builtin.fail:
-        msg: "replicaset size must be one of [{{ _member_counts | join(', ') }}], got '{{ _member_count }}'"
-      vars:
         _member_count: "{{ mongodb_replicaset_members | length }}"
-        _member_counts: ['3', '5', '7', '9']
-      when:
-        - mongodb_replicaset_name | default('') != ''
-        - _member_count not in _member_counts
 
     - name: Stat MongoDB configuration file
       ansible.builtin.stat:
