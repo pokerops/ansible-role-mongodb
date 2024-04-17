@@ -41,6 +41,11 @@
         key: "_replicaset_{{ 'voters' if _replicaset_voters else 'non_voters' }}"
       changed_when: false
 
+    - name: Group MongoDB priority members
+      ansible.builtin.group_by:
+        key: "_replicaset_{{ 'priority' if _replicaset_priority else 'non_priority' }}"
+      changed_when: false
+
     - name: Compute MongoDB member facts
       ansible.builtin.set_fact:
         replicaset_aliens: "{{ groups['_replicaset_alien'] | default([]) }}"
@@ -48,7 +53,7 @@
         replicaset_failures: "{{ groups['_replicaset_failed'] | default([]) }}"
         replicaset_voters: "{{ groups['_replicaset_voters'] | default([]) }}"
         replicaset_non_voters: "{{ groups['_replicaset_non_voters'] | default([]) }}"
-        replicaset_priority: "{{ groups['_replicaset_voters'] | default([]) }}"
+        replicaset_priority: "{{ groups['_replicaset_priority'] | default([]) }}"
 
     - name: Verify MongoDB replicaset status
       ansible.builtin.assert:
@@ -57,13 +62,17 @@
           - replicaset_failures | length == 0
           - _max_voters_validation and _max_non_voters_validation
           - _all_voters or _missing_voters
-          - mongodb_priority | default('1') | int <= '1000' | int
+          - _priority | int <= 1000 | int
+          - _votes | int <= 1 | int
+          - (_votes | int == 1 and _priority | int > 0) or (_votes | int == 0 and _priority | int == 0)
       vars:
+        _priority: "{{ mongodb_priority | default('1') | int }}"
+        _votes: "{{ mongodb_votes | default('1') | int }}"
         _non_voters_count: "{{ replicaset_non_voters }}"
         _voters_count: "{{ replicaset_voters }}"
         _max_voters_validation: "{{ _voters_count | length <= '7' | int }}"
         _max_non_voters_validation: "{{ _non_voters_count | length <= '43' | int }}"
-        _all_voters: "{{ (_voters_count | length > 0) and (_non_voters_count | length == 0) }}"
+        _all_voters: "{{ (_voters_count | length > 1) and (_non_voters_count | length == 0) }}"
         _missing_voters: "{{ (_voters_count | length == 0) and (_non_voters_count | length > 0) }}"
 
     - name: Compute MongoDB member votes and priorities
@@ -75,6 +84,16 @@
         _default_priority: 1
         _is_voter: "{{ inventory_hostname in replicaset_voters }}"
         _has_priority: "{{ inventory_hostname in replicaset_priority }}"
+
+    - name: Build address fact dictionary
+      ansible.builtin.set_fact:
+        _revaddrs: "{{ _host_addrs | zip(_hosts) | community.general.dict }}"
+        _fwdaddrs: "{{ _hosts | zip(_host_addrs) | community.general.dict }}"
+        _map_format: 'nephelaiio.plugins.map_format'
+        _split_with: 'nephelaiio.plugins.split_with'
+      vars:
+        _hosts: "{{ ansible_play_hosts }}"
+        _host_addrs: "{{ _hosts | map('extract', hostvars, ['ansible_default_ipv4', 'address']) }}"
 
     - name: Initialize MongoDB replicaset
       run_once: true
@@ -88,6 +107,12 @@
             replica_set: "{{ mongodb_replicaset_name }}"
             members: "{{ mongodb_replicaset_members }}"
             validate: false
+
+        - name: Manage MongoDB replicaset members
+          ansible.builtin.include_tasks: "reconfigure.yml"
+          vars:
+            _existing_member: true
+          loop: "{{ mongodb_replicaset_members }}"
 
         - name: Wait for replicaset to stabilize
           community.mongodb.mongodb_status:
@@ -118,16 +143,6 @@
         - mongodb_replicaset_init | bool
         - replicaset_members | length > 0
       block:
-        - name: Build address fact dictionary
-          ansible.builtin.set_fact:
-            _revaddrs: "{{ _host_addrs | zip(_hosts) | community.general.dict }}"
-            _fwdaddrs: "{{ _hosts | zip(_host_addrs) | community.general.dict }}"
-            _map_format: 'nephelaiio.plugins.map_format'
-            _split_with: 'nephelaiio.plugins.split_with'
-          vars:
-            _hosts: "{{ ansible_play_hosts }}"
-            _host_addrs: "{{ _hosts | map('extract', hostvars, ['ansible_default_ipv4', 'address']) }}"
-
         - name: Set MongoDB member facts
           ansible.builtin.set_fact:
             _existing_members: "{{ _existing_addrs | map(_map_format, '%s:' + mongodb_port) }}"
@@ -185,39 +200,40 @@
 
         - name: Manage MongoDB replicaset members
           when:
-            - (_mongodb_add_members + _mongodb_delete_members) | length > 0
             - replicaset_primary | bool
             - mongodb_replicaset_update | bool
           block:
-            - name: Gather MongoDB version
-              community.mongodb.mongodb_info:
-                filter: general
-              changed_when: false
-              register: mongodb_installed_version
-
             - name: Manage existing MongoDB replicaset members
               ansible.builtin.include_tasks: "reconfigure.yml"
               vars:
                 _existing_member: true
               loop: "{{ _existing_members }}"
 
-            - name: Add new MongoDB replicaset members
-              ansible.builtin.include_tasks: "reconfigure.yml"
-              vars:
-                _add_member: true
-                _mongodb_info: "{{ mongodb_installed_version.general }}"
-                _mongodb_version: "{{ _mongodb_info.version }}"
-              loop: "{{ _mongodb_add_members }}"
+            - name: Manage MongoDB replicaset members
+              when: (_mongodb_add_members + _mongodb_delete_members) | length > 0
+              block:
+                - name: Gather MongoDB version
+                  community.mongodb.mongodb_info:
+                    filter: general
+                  changed_when: false
+                  register: mongodb_installed_version
 
-            - name: Remove stale MongoDB replicaset members
-              ansible.builtin.include_tasks: "reconfigure.yml"
-              vars:
-                _remove_member: true
-              loop: "{{ _mongodb_delete_members }}"
+                - name: Add new MongoDB replicaset members
+                  ansible.builtin.include_tasks: "reconfigure.yml"
+                  vars:
+                    _add_member: true
+                    _mongodb_info: "{{ mongodb_installed_version.general }}"
+                    _mongodb_version: "{{ _mongodb_info.version }}"
+                  loop: "{{ _mongodb_add_members }}"
+
+                - name: Remove stale MongoDB replicaset members
+                  ansible.builtin.include_tasks: "reconfigure.yml"
+                  vars:
+                    _remove_member: true
+                  loop: "{{ _mongodb_delete_members }}"
 
     - name: Allow read operations on secondary replicaset members
       community.mongodb.mongodb_shell:
         eval: "rs.secondaryOk()"
       changed_when: false
-      run_once: true
       when: replicaset_primary

@@ -1,27 +1,23 @@
 ---
-- name: Query MongoDB replicaset
-  run_once: true
-  block:
+- name: Query existing MongoDB replicaset members
+  community.mongodb.mongodb_shell:
+    eval: "rs.status().members"
+    mongo_cmd: "{{ mongodb_shell | default(omit) }}"
+  retries: "{{ mongodb_query_retries }}"
+  delay: "{{ mongodb_query_delay }}"
+  register: mongodb_status
+  until: mongodb_status is succeeded
+  changed_when: false
 
-    - name: Query existing MongoDB replicaset members
-      community.mongodb.mongodb_shell:
-        eval: "rs.status().members"
-        mongo_cmd: "{{ mongodb_shell | default(omit) }}"
-      retries: "{{ mongodb_query_retries }}"
-      delay: "{{ mongodb_query_delay }}"
-      register: mongodb_status
-      until: mongodb_status is succeeded
-      changed_when: false
-
-    - name: Query existing MongoDB replicaset config
-      community.mongodb.mongodb_shell:
-        eval: "rs.conf().members"
-        mongo_cmd: "{{ mongodb_shell | default(omit) }}"
-      retries: "{{ mongodb_query_retries }}"
-      delay: "{{ mongodb_query_delay }}"
-      register: mongodb_config
-      until: mongodb_config is succeeded
-      changed_when: false
+- name: Query existing MongoDB replicaset config
+  community.mongodb.mongodb_shell:
+    eval: "rs.conf().members"
+    mongo_cmd: "{{ mongodb_shell | default(omit) }}"
+  retries: "{{ mongodb_query_retries }}"
+  delay: "{{ mongodb_query_delay }}"
+  register: mongodb_config
+  until: mongodb_config is succeeded
+  changed_when: false
 
 - name: Set MongoDB replicaset member facts
   ansible.builtin.set_fact:
@@ -31,34 +27,36 @@
     _format_existing: '{"host": "%s"}'
     _members_list: "{{ mongodb_status.transformed_output | map(attribute='name') | list }}"
 
-- name: Manage existing member from MongoDB replicaset
-  community.mongodb.mongodb_replicaset:
-    replica_set: "{{ mongodb_replicaset_name }}"
-    members: "{{ _members_list + [_update_member] }}"
-    reconfigure: true
-    validate: false
-  vars:
-    _member_addr: "{{ item | split(':') | first }}"
-    _member_filter: "{{ _revaddrs[_member_addr] }}"
-    _existing_config: "{{ mongodb_config.transformed_output | list }}"
-    _update_member_config: "{{ _existing_config | selectattr('host', 'equalto', item) | list | first }}"
-    _update_priority: "{{ hostvars[_member_filter]['_mongodb_priority'] }}"
-    _update_votes: "{{ hostvars[_member_filter]['_mongodb_votes'] }}"
-    _members_list: "{{ _existing_members | rejectattr('host', 'equalto', item) }}"
-    _votes_query: "{{ _update_votes | int != _update_member_config.votes | int }}"
-    _priority_query: "{{ _update_priority | int != _update_member_config.priority | int }}"
-    _update_member: "{{
-      {
-        'host': item,
-        'hidden': false,
-        'votes': _update_votes | int,
-        'priority': _update_priority | int
-      }
-    }}"
-  when:
-    - _existing_member | default('false') | bool
-    - item == _update_member_config.host
-    - _votes_query or _priority_query
+- name: Manage MongoDB existing members
+  when: _existing_member | default('false') | bool
+  block:
+    - name: Manage existing member from MongoDB replicaset
+      community.mongodb.mongodb_replicaset:
+        replica_set: "{{ mongodb_replicaset_name }}"
+        members: "{{ _members_list + [_update_member] }}"
+        reconfigure: true
+        validate: false
+      vars:
+        _member_addr: "{{ item | split(':') | first }}"
+        _member_filter: "{{ _revaddrs[_member_addr] }}"
+        _existing_config: "{{ mongodb_config.transformed_output | list }}"
+        _update_member_config: "{{ _existing_config | selectattr('host', 'equalto', item) | list | first }}"
+        _update_priority: "{{ hostvars[_member_filter]['_mongodb_priority'] }}"
+        _update_votes: "{{ hostvars[_member_filter]['_mongodb_votes'] }}"
+        _members_list: "{{ _existing_members | rejectattr('host', 'equalto', item) }}"
+        _votes_query: "{{ _update_votes | int != _update_member_config.votes | int }}"
+        _priority_query: "{{ _update_priority | int != _update_member_config.priority | int }}"
+        _update_member: "{{
+          {
+            'host': item,
+            'hidden': false,
+            'votes': _update_votes | int,
+            'priority': _update_priority | int
+          }
+        }}"
+      when:
+        - item == _update_member_config.host
+        - _votes_query or _priority_query
 
 - name: Manage MongoDB new members
   when: _add_member | default('false') | bool
