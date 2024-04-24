@@ -18,7 +18,8 @@
       ansible.builtin.set_fact:
         _replicaset_alien: "{{ _is_alien | bool }}"
         _replicaset_member: "{{ _is_member | bool }}"
-        _replicaset_voters: "{{ _has_votes | bool }}"
+        _replicaset_votes: "{{ _has_votes | bool }}"
+        _replicaset_voting: "{{ _is_voting | bool }}"
         _replicaset_priority: "{{ _has_priority | bool }}"
       vars:
         _status: "{{ mongodb_status }}"
@@ -27,6 +28,7 @@
         _is_alien: "{{ _has_failed and (_message is search('no replset config has been received')) }}"
         _is_member: "{{ not _has_failed and not _is_alien }}"
         _has_votes: "{{ mongodb_votes is defined }}"
+        _is_voting: "{{ _has_votes and (mongodb_votes | int == '1' | int) }}"
         _has_priority: "{{ mongodb_priority is defined }}"
 
     - name: Group MongoDB members
@@ -36,9 +38,14 @@
         _status: "{{ 'member' if _replicaset_member else 'failed' }}"
       changed_when: false
 
-    - name: Group MongoDB voters members
+    - name: Group MongoDB vote members
       ansible.builtin.group_by:
-        key: "_replicaset_{{ 'voters' if _replicaset_voters else 'non_voters' }}"
+        key: "_replicaset_{{ 'votes' if _replicaset_votes else 'non_votes' }}"
+      changed_when: false
+
+    - name: Group MongoDB voting members
+      ansible.builtin.group_by:
+        key: "_replicaset_{{ 'voting' if _replicaset_voting else 'non_voting' }}"
       changed_when: false
 
     - name: Group MongoDB priority members
@@ -51,38 +58,48 @@
         replicaset_aliens: "{{ groups['_replicaset_alien'] | default([]) }}"
         replicaset_members: "{{ groups['_replicaset_member'] | default([]) }}"
         replicaset_failures: "{{ groups['_replicaset_failed'] | default([]) }}"
-        replicaset_voters: "{{ groups['_replicaset_voters'] | default([]) }}"
-        replicaset_non_voters: "{{ groups['_replicaset_non_voters'] | default([]) }}"
+        replicaset_voting: "{{ groups['_replicaset_voting'] | default([]) }}"
+        replicaset_non_voting: "{{ groups['_replicaset_non_voting'] | default([]) }}"
+        replicaset_votes: "{{ groups['_replicaset_votes'] | default([]) }}"
+        replicaset_non_votes: "{{ groups['_replicaset_non_votes'] | default([]) }}"
         replicaset_priority: "{{ groups['_replicaset_priority'] | default([]) }}"
+        replicaset_non_priority: "{{ groups['_replicaset_non_priority'] | default([]) }}"
 
     - name: Verify MongoDB replicaset status
       ansible.builtin.assert:
         that:
           - (replicaset_members | length > 0) or (replicaset_aliens | length > 0)
           - replicaset_failures | length == 0
-          - _max_voters_validation and _max_non_voters_validation
-          - _all_voters or _missing_voters
+          - _max_voting_validation and _max_non_voting_validation
+          - _all_defined_votes or _all_undefined_votes
+          - _all_defined_priority or _all_undefined_priority
           - _priority | int <= 1000 | int
           - _votes | int <= 1 | int
           - (_votes | int == 1 and _priority | int > 0) or (_votes | int == 0 and _priority | int == 0)
       vars:
         _priority: "{{ mongodb_priority | default('1') | int }}"
         _votes: "{{ mongodb_votes | default('1') | int }}"
-        _non_voters_count: "{{ replicaset_non_voters }}"
-        _voters_count: "{{ replicaset_voters }}"
-        _max_voters_validation: "{{ _voters_count | length <= '7' | int }}"
-        _max_non_voters_validation: "{{ _non_voters_count | length <= '43' | int }}"
-        _all_voters: "{{ (_voters_count | length > 1) and (_non_voters_count | length == 0) }}"
-        _missing_voters: "{{ (_voters_count | length == 0) and (_non_voters_count | length > 0) }}"
+        _undefined_votes_count: "{{ replicaset_non_votes }}"
+        _non_voting_count: "{{ replicaset_non_voting }}"
+        _voting_count: "{{ replicaset_voting }}"
+        _defined_votes_count: "{{ replicaset_votes }}"
+        _non_priority_count: "{{ replicaset_non_priority }}"
+        _priority_count: "{{ replicaset_priority }}"
+        _max_voting_validation: "{{ _voting_count | length <= '7' | int }}"
+        _max_non_voting_validation: "{{ _non_voting_count | length <= '43' | int }}"
+        _all_defined_votes: "{{ (_defined_votes_count | length > 0) and (_undefined_votes_count | length == 0) }}"
+        _all_defined_priority: "{{ (_priority_count | length > 0) and (_non_priority_count | length == 0) }}"
+        _all_undefined_priority: "{{ (_priority_count | length == 0) and (_non_priority_count | length > 0) }}"
+        _all_undefined_votes: "{{ (_defined_votes_count | length == 0) and (_undefined_votes_count | length > 0) }}"
 
     - name: Compute MongoDB member votes and priorities
       ansible.builtin.set_fact:
-        _mongodb_votes: "{{ mongodb_votes if _is_voter else _default_votes }}"
+        _mongodb_votes: "{{ mongodb_votes if _has_votes else _default_votes }}"
         _mongodb_priority: "{{ mongodb_priority if _has_priority else _default_priority }}"
       vars:
         _default_votes: 1
         _default_priority: 1
-        _is_voter: "{{ inventory_hostname in replicaset_voters }}"
+        _has_votes: "{{ inventory_hostname in replicaset_votes }}"
         _has_priority: "{{ inventory_hostname in replicaset_priority }}"
 
     - name: Build address fact dictionary

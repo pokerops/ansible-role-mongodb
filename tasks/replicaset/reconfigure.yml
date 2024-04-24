@@ -1,14 +1,4 @@
 ---
-- name: Query existing MongoDB replicaset members
-  community.mongodb.mongodb_shell:
-    eval: "rs.status().members"
-    mongo_cmd: "{{ mongodb_shell | default(omit) }}"
-  retries: "{{ mongodb_query_retries }}"
-  delay: "{{ mongodb_query_delay }}"
-  register: mongodb_status
-  until: mongodb_status is succeeded
-  changed_when: false
-
 - name: Query existing MongoDB replicaset config
   community.mongodb.mongodb_shell:
     eval: "rs.conf().members"
@@ -21,11 +11,16 @@
 
 - name: Set MongoDB replicaset member facts
   ansible.builtin.set_fact:
-    _existing_members: "{{ _members_list | map(_map_format, _format_existing) | map('from_json') }}"
+    _existing_members: "{{ _members_list }}"
   vars:
-    _map_format: 'nephelaiio.plugins.map_format'
+    _select_attrs: 'nephelaiio.plugins.select_attributes'
     _format_existing: '{"host": "%s"}'
-    _members_list: "{{ mongodb_status.transformed_output | map(attribute='name') | list }}"
+    _members_list: "{{ mongodb_config.transformed_output | map(_select_attrs, _attrs) | list }}"
+    _attrs:
+      - host
+      - priority
+      - hidden
+      - votes
 
 - name: Manage MongoDB existing members
   when: _existing_member | default('false') | bool
@@ -54,9 +49,7 @@
             'priority': _update_priority | int
           }
         }}"
-      when:
-        - item == _update_member_config.host
-        - _votes_query or _priority_query
+      when: (_votes_query or _priority_query) or (_votes_query and _priority_query)
 
 - name: Manage MongoDB new members
   when: _add_member | default('false') | bool
