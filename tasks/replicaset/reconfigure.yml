@@ -14,7 +14,6 @@
     _existing_members: "{{ _members_list }}"
   vars:
     _select_attrs: 'nephelaiio.plugins.select_attributes'
-    _format_existing: '{"host": "%s"}'
     _members_list: "{{ mongodb_config.transformed_output | map(_select_attrs, _attrs) | list }}"
     _attrs:
       - host
