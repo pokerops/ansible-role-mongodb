@@ -21,6 +21,18 @@
         _replicaset_votes: "{{ _has_votes | bool }}"
         _replicaset_voting: "{{ _is_voting | bool }}"
         _replicaset_priority: "{{ _has_priority | bool }}"
+        _replicaset_votes_compliant: "{{ _compliant | bool }}"
+        _alien_group: "{{ mongodb_alien_group | default('_replicaset_alien') }}"
+        _member_group: "{{ mongodb_member_group | default('_replicaset_member') }}"
+        _failed_group: "{{ mongodb_failed_group | default('_replicaset_failed') }}"
+        _votes_group: "{{ mongodb_votes_group | default('_replicaset_votes') }}"
+        _non_votes_group: "{{ mongodb_non_votes_group | default('_replicaset_non_votes') }}"
+        _voting_group: "{{ mongodb_voting_group | default('_replicaset_voting') }}"
+        _non_voting_group: "{{ mongodb_non_voting_group | default('_replicaset_non_voting') }}"
+        _priority_group: "{{ mongodb_priority_group | default('_replicaset_priority') }}"
+        _non_priority_group: "{{ mongodb_non_priority_group | default('_replicaset_non_priority') }}"
+        _compliant_group: "{{ mongodb_compliant_group | default('_replicaset_compliant') }}"
+        _non_compliant_group: "{{ mongodb_non_compliant_group | default('_replicaset_non_compliant') }}"
       vars:
         _status: "{{ mongodb_status }}"
         _has_failed: "{{ _status.failed | bool }}"
@@ -28,65 +40,74 @@
         _is_alien: "{{ _has_failed and (_message is search('no replset config has been received')) }}"
         _is_member: "{{ not _has_failed and not _is_alien }}"
         _has_votes: "{{ mongodb_votes is defined }}"
-        _is_voting: "{{ _has_votes and (mongodb_votes | int == '1' | int) }}"
+        _is_voting: "{{ _votes == '1' }}"
         _has_priority: "{{ mongodb_priority is defined }}"
+        _votes: "{{ mongodb_votes if _has_votes else '1' }}"
+        _priority: "{{ mongodb_priority if _has_priority else '1' }}"
+        _voting_compliant: "{{ _votes == '1' and _priority > '0' }}"
+        _non_voting_compliant: "{{ _votes == '0' and _priority == '0' }}"
+        _votes_compliant: "{{ (_votes in['0','1']) }}"
+        _priority_compliant: "{{ (_priority <= '1000') }}"
+        _compliant: "{{ _votes_compliant and _priority_compliant and (_voting_compliant or _non_voting_compliant) }}"
 
     - name: Group MongoDB members
       ansible.builtin.group_by:
-        key: "_replicaset_{{ 'alien' if _replicaset_alien else _status }}"
+        key: "{{ _alien_group if _replicaset_alien else _status }}"
       vars:
-        _status: "{{ 'member' if _replicaset_member else 'failed' }}"
+        _status: "{{ _member_group if _replicaset_member else _failed_group }}"
       changed_when: false
 
     - name: Group MongoDB vote members
       ansible.builtin.group_by:
-        key: "_replicaset_{{ 'votes' if _replicaset_votes else 'non_votes' }}"
+        key: "{{ _votes_group if _replicaset_votes else _non_votes_group }}"
       changed_when: false
 
     - name: Group MongoDB voting members
       ansible.builtin.group_by:
-        key: "_replicaset_{{ 'voting' if _replicaset_voting else 'non_voting' }}"
+        key: "{{ _voting_group if _replicaset_voting else _non_voting_group }}"
       changed_when: false
 
     - name: Group MongoDB priority members
       ansible.builtin.group_by:
-        key: "_replicaset_{{ 'priority' if _replicaset_priority else 'non_priority' }}"
+        key: "{{ _priority_group if _replicaset_priority else _non_priority_group }}"
+      changed_when: false
+
+    - name: Group MongoDB votes and priority compliant members
+      ansible.builtin.group_by:
+        key: "{{ _compliant_group if _replicaset_votes_compliant else _non_compliant_group }}"
       changed_when: false
 
     - name: Compute MongoDB member facts
       ansible.builtin.set_fact:
-        replicaset_aliens: "{{ groups['_replicaset_alien'] | default([]) }}"
-        replicaset_members: "{{ groups['_replicaset_member'] | default([]) }}"
-        replicaset_failures: "{{ groups['_replicaset_failed'] | default([]) }}"
-        replicaset_voting: "{{ groups['_replicaset_voting'] | default([]) }}"
-        replicaset_non_voting: "{{ groups['_replicaset_non_voting'] | default([]) }}"
-        replicaset_votes: "{{ groups['_replicaset_votes'] | default([]) }}"
-        replicaset_non_votes: "{{ groups['_replicaset_non_votes'] | default([]) }}"
-        replicaset_priority: "{{ groups['_replicaset_priority'] | default([]) }}"
-        replicaset_non_priority: "{{ groups['_replicaset_non_priority'] | default([]) }}"
+        replicaset_aliens: "{{ groups[_alien_group] | default([]) }}"
+        replicaset_members: "{{ groups[_member_group] | default([]) }}"
+        replicaset_failures: "{{ groups[_failed_group] | default([]) }}"
+        replicaset_voting: "{{ groups[_voting_group] | default([]) }}"
+        replicaset_non_voting: "{{ groups[_non_voting_group] | default([]) }}"
+        replicaset_votes: "{{ groups[_votes_group] | default([]) }}"
+        replicaset_non_votes: "{{ groups[_non_votes_group] | default([]) }}"
+        replicaset_priority: "{{ groups[_priority_group] | default([]) }}"
+        replicaset_non_priority: "{{ groups[_non_priority_group] | default([]) }}"
+        replicaset_compliant: "{{ groups[_compliant_group] | default([]) }}"
 
     - name: Verify MongoDB replicaset status
       ansible.builtin.assert:
         that:
           - (replicaset_members | length > 0) or (replicaset_aliens | length > 0)
           - replicaset_failures | length == 0
-          - _max_voting_validation and _max_non_voting_validation
+          - (_voting_count | length > 2) and (_voting_count | length <= 7)
+          - _non_voting_count | length <= 43
           - _all_defined_votes or _all_undefined_votes
           - _all_defined_priority or _all_undefined_priority
-          - _priority | int <= 1000 | int
-          - _votes | int <= 1 | int
-          - (_votes | int == 1 and _priority | int > 0) or (_votes | int == 0 and _priority | int == 0)
+          - _compliant_count | length == mongodb_replicaset_members | length
       vars:
-        _priority: "{{ mongodb_priority | default('1') | int }}"
-        _votes: "{{ mongodb_votes | default('1') | int }}"
         _undefined_votes_count: "{{ replicaset_non_votes }}"
         _non_voting_count: "{{ replicaset_non_voting }}"
         _voting_count: "{{ replicaset_voting }}"
         _defined_votes_count: "{{ replicaset_votes }}"
         _non_priority_count: "{{ replicaset_non_priority }}"
+        _compliant_count: "{{ replicaset_compliant }}"
         _priority_count: "{{ replicaset_priority }}"
-        _max_voting_validation: "{{ _voting_count | length <= '7' | int }}"
-        _max_non_voting_validation: "{{ _non_voting_count | length <= '43' | int }}"
         _all_defined_votes: "{{ (_defined_votes_count | length > 0) and (_undefined_votes_count | length == 0) }}"
         _all_defined_priority: "{{ (_priority_count | length > 0) and (_non_priority_count | length == 0) }}"
         _all_undefined_priority: "{{ (_priority_count | length == 0) and (_non_priority_count | length > 0) }}"
@@ -108,6 +129,7 @@
         _fwdaddrs: "{{ _hosts | zip(_host_addrs) | community.general.dict }}"
         _map_format: 'nephelaiio.plugins.map_format'
         _split_with: 'nephelaiio.plugins.split_with'
+        _select_attrs: 'nephelaiio.plugins.select_attributes'
       vars:
         _hosts: "{{ ansible_play_hosts }}"
         _host_addrs: "{{ _hosts | map('extract', hostvars, ['ansible_default_ipv4', 'address']) }}"
@@ -133,22 +155,17 @@
             _votes_format: "{ \"votes\": %s }"
             _votes: "[{{ _hosts | map('extract', hostvars, ['_mongodb_votes']) | map(_map_format, _votes_format) | join(',') }}]"
 
-        - name: Manage MongoDB replicaset members
-          ansible.builtin.include_tasks: "reconfigure.yml"
-          vars:
-            _existing_member: true
-          loop: "{{ mongodb_replicaset_members }}"
-
         - name: Wait for replicaset to stabilize
           community.mongodb.mongodb_status:
             replica_set: "{{ mongodb_replicaset_name }}"
             validate: minimal
-            poll: 5
-            interval: 10
+            poll: "{{ mongodb_reconfig_poll }}"
+            interval: "{{ mongodb_reconfig_interval }}"
           retries: "{{ mongodb_converge_retries }}"
           delay: "{{ mongodb_converge_delay }}"
-          register: mongodb_rs
-          until: mongodb_rs is succeeded
+          register: mongodb_status
+          until: mongodb_status is succeeded
+          changed_when: false
 
     - name: Query replicaset membership
       community.mongodb.mongodb_shell:
@@ -173,6 +190,16 @@
             _existing_members: "{{ _existing_addrs | map(_map_format, '%s:' + mongodb_port) }}"
           vars:
             _existing_addrs: "{{ replicaset_members | map('extract', hostvars, ['ansible_default_ipv4', 'address']) }}"
+
+        - name: Query existing MongoDB replicaset config
+          community.mongodb.mongodb_shell:
+            eval: "rs.conf().members"
+            mongo_cmd: "{{ mongodb_shell | default(omit) }}"
+          retries: "{{ mongodb_query_retries }}"
+          delay: "{{ mongodb_query_delay }}"
+          register: mongodb_config
+          until: mongodb_config is succeeded
+          changed_when: false
 
         - name: Detect new cluster members
           ansible.builtin.set_fact:
@@ -207,6 +234,22 @@
             _target_hostaddrs: "{{ _target_members + _target_iphosts + _target_revhosts }}"
             _delete_members: "{{ _existing_members | reject('in', _target_hostaddrs) }}"
 
+        - name: Detect new voting and priorities
+          ansible.builtin.set_fact:
+            _mongodb_existing_members: "{{ _voting_filter if _existing_voting | length >= 7 else _non_voting_filter }}"
+          vars:
+            _hosts: "[{{ replicaset_members | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | map(_map_format, _hosts_format) | join(',') }}]"
+            _hosts_format: "{{ { \"host\": \"%s:\" + mongodb_port } }}"
+            _votes_format: "{ \"votes\": %s }"
+            _votes: "[{{ replicaset_members | map('extract', hostvars, ['_mongodb_votes']) | map(_map_format, _votes_format) | join(',') }}]"
+            _existing_members_list: "{{ mongodb_config.transformed_output }}"
+            _existing_voting: "{{ _existing_members_list | selectattr('votes', 'equalto', 1) }}"
+            _new_members: "{{ _hosts | zip(_votes) | map('combine') }}"
+            _new_voting: "{{ _new_members | selectattr('votes', 'equalto', 1) }}"
+            _new_non_voting: "{{ _new_members | difference(_new_voting) }}"
+            _voting_filter: "{{ _new_non_voting | zip_longest(_new_voting) | flatten | map(attribute='host') }}"
+            _non_voting_filter: "{{ _new_voting | zip_longest(_new_non_voting) | flatten | map(attribute='host') }}"
+
         - name: Debug target members
           ansible.builtin.debug:
             msg: "Target members are [{{ mongodb_replicaset_members | join(',') }}]"
@@ -223,6 +266,44 @@
           ansible.builtin.debug:
             msg: "Removing cluster members [{{ _mongodb_delete_members | join(',') }}]"
 
+        - name: Debug existing votes and priorities
+          ansible.builtin.debug:
+            msg: "{{ _existing }}"
+          vars:
+            _target_members: "{{ mongodb_replicaset_members }}"
+            _target_hosts: "{{ _target_members | map(_split_with, ':') | map('first') }}"
+            _target_inventory: "{{ _target_hosts | select('in', _fwdaddrs) }}"
+            _target_inventory_addrs: "{{ _target_inventory | map('extract', _fwdaddrs) }}"
+            _target_host_addrs: "{{ _target_hosts | ansible.utils.ipaddr }}"
+            _target_addrs: "{{ _target_inventory_addrs + _target_host_addrs }}"
+            _target_iphosts: "{{ _target_addrs | map(_map_format, '%s:' + mongodb_port) }}"
+            _target_revaddrs: "{{ _target_addrs | select('in', _revaddrs) }}"
+            _target_revnames: "{{ _target_revaddrs | map('extract', _revaddrs) }}"
+            _target_revhosts: "{{ _target_revnames | map(_map_format, '%s:' + mongodb_port) }}"
+            _target_hostaddrs: "{{ _target_members + _target_iphosts + _target_revhosts }}"
+            _existing_members_list: "{{ mongodb_config.transformed_output }}"
+            _member_votes: "{{ _existing_members_list | selectattr('host', 'in', _target_hostaddrs) }}"
+            _existing: "{{ _member_votes | map(_select_attrs, _attrs) }}"
+            _attrs:
+              - "host"
+              - "votes"
+              - "priority"
+          run_once: true
+
+        - name: Debug new votes and priorities
+          ansible.builtin.debug:
+            msg: "{{ _new_votes }}"
+          vars:
+            _hosts: "{{ ansible_play_hosts }}"
+            _host_members: "[{{ mongodb_replicaset_members | map(_map_format, _host_format) | join(',') }}]"
+            _host_format: "{ \"host\": \"%s\" }"
+            _priorities: "[{{ _hosts | map('extract', hostvars, ['_mongodb_priority']) | map(_map_format, _priority_format) | join(',') }}]"
+            _priority_format: "{ \"priority\": \"%s\" }"
+            _votes_format: "{ \"votes\": \"%s\" }"
+            _votes: "[{{ _hosts | map('extract', hostvars, ['_mongodb_votes']) | map(_map_format, _votes_format) | join(',') }}]"
+            _new_votes: "{{ _host_members | zip(_votes, _priorities) | map('combine') }}"
+          run_once: true
+
         - name: Manage MongoDB replicaset members
           when:
             - replicaset_primary | bool
@@ -232,7 +313,7 @@
               ansible.builtin.include_tasks: "reconfigure.yml"
               vars:
                 _existing_member: true
-              loop: "{{ _existing_members }}"
+              loop: "{{ _mongodb_existing_members }}"
 
             - name: Manage MongoDB replicaset members
               when: (_mongodb_add_members + _mongodb_delete_members) | length > 0
