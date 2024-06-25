@@ -103,6 +103,14 @@
           }
         }}"
 
+- name: Drop stale member from MongoDB replicaset
+  community.mongodb.mongodb_replicaset:
+    replica_set: "{{ mongodb_replicaset_name }}"
+    members: "{{ _existing_members | rejectattr('host', 'equalto', item) }}"
+    reconfigure: true
+    validate: false
+  when: _remove_member | default('false') | bool
+
 - name: Wait for replicaset to stabilize
   community.mongodb.mongodb_status:
     replica_set: "{{ mongodb_replicaset_name }}"

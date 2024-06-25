@@ -32,8 +32,7 @@
         that:
           - _mongodb_packages | default([]) | length > 0
           - mongodb_pip_packages | default([]) | length > 0
-          - _role != ''
-          - _role in _roles
+          - _role != '' and _role in _roles
           - mongodb_replicaset_name | default('') != ''
           - _member_count | int > 1
           - _member_count | int is odd
