@@ -40,14 +40,7 @@
         _members_list: "{{ _existing_members | rejectattr('host', 'equalto', item) }}"
         _votes_query: "{{ _update_votes | int != _update_member_config.votes | int }}"
         _priority_query: "{{ _update_priority | int != _update_member_config.priority | int }}"
-        _update_member: "{{
-          {
-            'host': item,
-            'hidden': false,
-            'votes': _update_votes | int,
-            'priority': _update_priority | int
-          }
-        }}"
+        _update_member: "{{ {'host': item, 'hidden': false, 'votes': _update_votes | int, 'priority': _update_priority | int} }}"
       when: (_votes_query or _priority_query) or (_votes_query and _priority_query)
 
 - name: Manage MongoDB new members
@@ -94,14 +87,7 @@
         _member_filter: "{{ _revaddrs[_member_addr] }}"
         _priority: "{{ hostvars[_member_filter]['_mongodb_priority'] }}"
         _votes: "{{ hostvars[_member_filter]['_mongodb_votes'] }}"
-        _update_member: "{{
-          {
-            'host': item,
-            'hidden': false,
-            'votes': _votes | int,
-            'priority': _priority | int
-          }
-        }}"
+        _update_member: "{{ {'host': item, 'hidden': false, 'votes': _votes | int, 'priority': _priority | int} }}"
 
 - name: Drop stale member from MongoDB replicaset
   community.mongodb.mongodb_replicaset:
