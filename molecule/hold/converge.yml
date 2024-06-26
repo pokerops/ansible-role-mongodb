@@ -35,7 +35,7 @@
         cmd: "yum list {{ item }} --showduplicates | grep '^{{ item }}' | awk '{ print $1,$2 }' | sort -r"
       loop: "{{ mongodb_packages }}"
       register: _redhat_package_query
-      when: ansible_os_family in ["RedHat", "Rocky"]
+      when: ansible_os_family == "RedHat"
       changed_when: false
 
     - name: Set package version facts
@@ -87,7 +87,7 @@
       loop_control:
         label: "{{ item.item }}"
       loop: "{{ _mongodb_package_query }}"
-      when: ansible_os_family in ["RedHat", "Rocky"]
+      when: ansible_os_family == "RedHat"
 
     - name: Deploy MongoDB
       block:

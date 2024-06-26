@@ -16,7 +16,7 @@
         cmd: "yum list {{ item }} --showduplicates | grep '^{{ item }}' | awk '{ print $1,$2 }' | sort -r"
       loop: "{{ mongodb_packages }}"
       register: _redhat_package_query
-      when: ansible_os_family in ["RedHat", "Rocky"]
+      when: ansible_os_family == "RedHat"
       changed_when: false
 
     - name: Set package version facts
@@ -57,7 +57,7 @@
       loop_control:
         label: "{{ item.item }}"
       loop: "{{ _mongodb_package_query }}"
-      when: ansible_os_family in ["RedHat", "Rocky"]
+      when: ansible_os_family == "RedHat"
 
     - name: Gather package facts
       ansible.builtin.package_facts:
@@ -75,7 +75,7 @@
         _installed: "{{ (packages[_package] | default([{'version': 'None'}]))[0].version }}"
       loop_control:
         label: "{{ _package }}"
-      loop: "{{ mongodb_package_list }}"
+      loop: "{{ mongodb_packages }}"
       when: ansible_os_family == "Debian"
 
     - name: Verify package versions
@@ -94,4 +94,4 @@
       loop_control:
         label: "{{ _package }}"
       loop: "{{ mongodb_packages | zip(mongodb_package_list) }}"
-      when: ansible_os_family in ["RedHat", "Rocky"]
+      when: ansible_os_family == "RedHat"
