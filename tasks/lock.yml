@@ -4,7 +4,7 @@
     name: "{{ item.split('=') | first }}"
     selection: "{{ _lock_state }}"
   vars:
-    _version_regex: ".*=.*"
+    _version_regex: ".*[-|=].*"
     _package_versions: "{{ [mongodb_packages] | flatten | map('regex_search', _version_regex) }}"
     _package_holds: "{{ _package_versions | select('string') }}"
   loop: "{{ _package_holds }}"
