@@ -62,12 +62,6 @@
     - name: Gather package facts
       ansible.builtin.package_facts:
 
-    - debug:
-        msg: "{{ mongodb_packages }}"
-
-    - debug:
-        msg: "{{ mongodb_package_list }}"
-
     - name: Verify package versions
       ansible.builtin.assert:
         that:
@@ -81,7 +75,7 @@
         _installed: "{{ (packages[_package] | default([{'version': 'None'}]))[0].version }}"
       loop_control:
         label: "{{ _package }}"
-      loop: "{{ mongodb_packages }}"
+      loop: "{{ mongodb_packages | zip(mongodb_package_list) }}"
       when: ansible_os_family == "Debian"
 
     - name: Verify package versions
