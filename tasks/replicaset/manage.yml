@@ -199,6 +199,7 @@
           delay: "{{ mongodb_query_delay }}"
           register: mongodb_config
           until: mongodb_config is succeeded
+          when: replicaset_primary | bool
           changed_when: false
 
         - name: Detect new cluster members
@@ -340,4 +341,4 @@
       community.mongodb.mongodb_shell:
         eval: "rs.secondaryOk()"
       changed_when: false
-      when: replicaset_primary
+      when: replicaset_primary | bool
