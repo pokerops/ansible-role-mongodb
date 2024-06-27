@@ -57,6 +57,18 @@
                 name: pokerops.mongodb
               vars:
                 mongodb_replicaset_members: "{{ _config_members }}"
+                mongodb_votes_group: "_replicaset_votes_up_three"
+                mongodb_non_votes_group: "_replicaset_non_votes_up_three"
+                mongodb_voting_group: "_replicaset_voting_up_three"
+                mongodb_priority_group: "_replicaset_priority_up_three"
+                mongodb_non_priority_group: "_replicaset_non_priority_up_three"
+                mongodb_compliant_group: "_replicaset_compliant_up_three"
+                mongodb_non_compliant_group: "_replicaset_non_compliant_up_three"
+                mongodb_non_voting_group: "_replicaset_non_voting_up_three"
+                mongodb_alien_group: "_replicaset_alien_up_three"
+                mongodb_non_alien_group: "_replicaset_non_alien_up_three"
+                mongodb_member_group: "_replicaset_member_up_three"
+                mongodb_failed_group: "_replicaset_failed_up_three"
 
             - name: Query existing MongoDB replicaset members
               community.mongodb.mongodb_shell:
@@ -89,6 +101,18 @@
                 _addresses: "{{ _hosts2 | map('extract', hostvars, _addr_attrs) }}"
                 _members: "{{ _addresses | list }}"
                 mongodb_replicaset_members: "{{ _members | map(_map_format, '%s:' + mongodb_port) | list }}"
+                mongodb_votes_group: "_replicaset_votes_up_two"
+                mongodb_non_votes_group: "_replicaset_non_votes_up_two"
+                mongodb_voting_group: "_replicaset_voting_up_two"
+                mongodb_priority_group: "_replicaset_priority_up_two"
+                mongodb_non_priority_group: "_replicaset_non_priority_up_two"
+                mongodb_compliant_group: "_replicaset_compliant_up_two"
+                mongodb_non_compliant_group: "_replicaset_non_compliant_up_two"
+                mongodb_non_voting_group: "_replicaset_non_voting_up_two"
+                mongodb_alien_group: "_replicaset_alien_up_two"
+                mongodb_non_alien_group: "_replicaset_non_alien_up_two"
+                mongodb_member_group: "_replicaset_member_up_two"
+                mongodb_failed_group: "_replicaset_failed_up_two"
           rescue:
             - name: Set result facts
               ansible.builtin.set_fact:
@@ -117,6 +141,18 @@
                 name: pokerops.mongodb
               vars:
                 mongodb_replicaset_members: "{{ _config_members }}"
+                mongodb_votes_group: "_replicaset_votes_up_five"
+                mongodb_non_votes_group: "_replicaset_non_votes_up_five"
+                mongodb_voting_group: "_replicaset_voting_up_five"
+                mongodb_priority_group: "_replicaset_priority_up_five"
+                mongodb_non_priority_group: "_replicaset_non_priority_up_five"
+                mongodb_compliant_group: "_replicaset_compliant_up_five"
+                mongodb_non_compliant_group: "_replicaset_non_compliant_up_five"
+                mongodb_non_voting_group: "_replicaset_non_voting_up_five"
+                mongodb_alien_group: "_replicaset_alien_up_five"
+                mongodb_non_alien_group: "_replicaset_non_alien_up_five"
+                mongodb_member_group: "_replicaset_member_up_five"
+                mongodb_failed_group: "_replicaset_failed_up_five"
 
             - name: Query existing MongoDB replicaset members
               community.mongodb.mongodb_shell:
@@ -177,6 +213,18 @@
                 name: pokerops.mongodb
               vars:
                 mongodb_replicaset_members: "{{ _config_members }}"
+                mongodb_votes_group: "_replicaset_votes_up_seven"
+                mongodb_non_votes_group: "_replicaset_non_votes_up_seven"
+                mongodb_voting_group: "_replicaset_voting_up_seven"
+                mongodb_priority_group: "_replicaset_priority_up_seven"
+                mongodb_non_priority_group: "_replicaset_non_priority_up_seven"
+                mongodb_compliant_group: "_replicaset_compliant_up_seven"
+                mongodb_non_compliant_group: "_replicaset_non_compliant_up_seven"
+                mongodb_non_voting_group: "_replicaset_non_voting_up_seven"
+                mongodb_alien_group: "_replicaset_alien_up_seven"
+                mongodb_non_alien_group: "_replicaset_non_alien_up_seven"
+                mongodb_member_group: "_replicaset_member_up_seven"
+                mongodb_failed_group: "_replicaset_failed_up_seven"
 
             - name: Query existing MongoDB replicaset members
               community.mongodb.mongodb_shell:
@@ -220,84 +268,104 @@
                 fail_msg: "broken replicaset member configuration operation must fail"
 
         - name: Scale down to 5 node cluster
+          when: inventory_hostname in _hosts5
           block:
-            - name: Reconfigure active nodes
-              when: inventory_hostname in _hosts5
-              block:
-                - name: Set member facts
-                  ansible.builtin.set_fact:
-                    _config_members: "{{ _members | map(_map_format, '%s:' + _port) | list }}"
-                  vars:
-                    _port: "{{ mongodb_port | default('27017') }}"
-                    _map_format: 'nephelaiio.plugins.map_format'
-                    _addr_attrs: ['ansible_default_ipv4', 'address']
-                    _addresses: "{{ _hosts5 | map('extract', hostvars, _addr_attrs) }}"
-                    _members: "{{ _addresses | list }}"
+            - name: Set member facts
+              ansible.builtin.set_fact:
+                _config_members: "{{ _members | map(_map_format, '%s:' + _port) | list }}"
+              vars:
+                _port: "{{ mongodb_port | default('27017') }}"
+                _map_format: 'nephelaiio.plugins.map_format'
+                _addr_attrs: ['ansible_default_ipv4', 'address']
+                _addresses: "{{ _hosts5 | map('extract', hostvars, _addr_attrs) }}"
+                _members: "{{ _addresses | list }}"
 
-                - name: Configure cluster members
-                  ansible.builtin.include_role:
-                    name: pokerops.mongodb
-                  vars:
-                    mongodb_replicaset_members: "{{ _config_members }}"
+            - name: Configure cluster members
+              ansible.builtin.include_role:
+                name: pokerops.mongodb
+              vars:
+                mongodb_replicaset_members: "{{ _config_members }}"
+                mongodb_votes_group: "_replicaset_votes_down_five"
+                mongodb_non_votes_group: "_replicaset_non_votes_down_five"
+                mongodb_voting_group: "_replicaset_voting_down_five"
+                mongodb_priority_group: "_replicaset_priority_down_five"
+                mongodb_non_priority_group: "_replicaset_non_priority_down_five"
+                mongodb_compliant_group: "_replicaset_compliant_down_five"
+                mongodb_non_compliant_group: "_replicaset_non_compliant_down_five"
+                mongodb_non_voting_group: "_replicaset_non_voting_down_five"
+                mongodb_alien_group: "_replicaset_alien_down_five"
+                mongodb_non_alien_group: "_replicaset_non_alien_down_five"
+                mongodb_member_group: "_replicaset_member_down_five"
+                mongodb_failed_group: "_replicaset_failed_down_five"
 
-                - name: Query existing MongoDB replicaset members
-                  community.mongodb.mongodb_shell:
-                    eval: "rs.status().members"
-                    mongo_cmd: "{{ mongodb_shell | default(omit) }}"
-                  register: _query_members
-                  changed_when: false
+            - name: Query existing MongoDB replicaset members
+              community.mongodb.mongodb_shell:
+                eval: "rs.status().members"
+                mongo_cmd: "{{ mongodb_shell | default(omit) }}"
+              register: _query_members
+              changed_when: false
 
-                - name: Set replicaset member facts
-                  ansible.builtin.set_fact:
-                    _existing_members: "{{ _query_members.transformed_output | map(attribute='name') }}"
+            - name: Set replicaset member facts
+              ansible.builtin.set_fact:
+                _existing_members: "{{ _query_members.transformed_output | map(attribute='name') }}"
 
-                - name: Debug replicaset members
-                  ansible.builtin.debug:
-                    var: _existing_members
+            - name: Debug replicaset members
+              ansible.builtin.debug:
+                var: _existing_members
 
-                - name: Check cluster members
-                  ansible.builtin.assert:
-                    that: _config_members | difference(_existing_members) | length == 0
+            - name: Check cluster members
+              ansible.builtin.assert:
+                that: _config_members | difference(_existing_members) | length == 0
 
         - name: Scale down to 3 node cluster
+          when: inventory_hostname in _hosts3
           block:
-            - name: Reconfigure active nodes
-              when: inventory_hostname in _hosts3
-              block:
-                - name: Set member facts
-                  ansible.builtin.set_fact:
-                    _config_members: "{{ _members | map(_map_format, '%s:' + _port) | list }}"
-                  vars:
-                    _port: "{{ mongodb_port | default('27017') }}"
-                    _map_format: 'nephelaiio.plugins.map_format'
-                    _addr_attrs: ['ansible_default_ipv4', 'address']
-                    _addresses: "{{ _hosts3 | map('extract', hostvars, _addr_attrs) }}"
-                    _members: "{{ _addresses | list }}"
+            - name: Set member facts
+              ansible.builtin.set_fact:
+                _config_members: "{{ _members | map(_map_format, '%s:' + _port) | list }}"
+              vars:
+                _port: "{{ mongodb_port | default('27017') }}"
+                _map_format: 'nephelaiio.plugins.map_format'
+                _addr_attrs: ['ansible_default_ipv4', 'address']
+                _addresses: "{{ _hosts3 | map('extract', hostvars, _addr_attrs) }}"
+                _members: "{{ _addresses | list }}"
 
-                - name: Configure cluster members
-                  ansible.builtin.include_role:
-                    name: pokerops.mongodb
-                  vars:
-                    mongodb_replicaset_members: "{{ _config_members }}"
+            - name: Configure cluster members
+              ansible.builtin.include_role:
+                name: pokerops.mongodb
+              vars:
+                mongodb_replicaset_members: "{{ _config_members }}"
+                mongodb_votes_group: "_replicaset_votes_down_three"
+                mongodb_non_votes_group: "_replicaset_non_votes_down_three"
+                mongodb_voting_group: "_replicaset_voting_down_three"
+                mongodb_priority_group: "_replicaset_priority_down_three"
+                mongodb_non_priority_group: "_replicaset_non_priority_down_three"
+                mongodb_compliant_group: "_replicaset_compliant_down_three"
+                mongodb_non_compliant_group: "_replicaset_non_compliant_down_three"
+                mongodb_non_voting_group: "_replicaset_non_voting_down_three"
+                mongodb_alien_group: "_replicaset_alien_down_three"
+                mongodb_non_alien_group: "_replicaset_non_alien_down_three"
+                mongodb_member_group: "_replicaset_member_down_three"
+                mongodb_failed_group: "_replicaset_failed_down_three"
 
-                - name: Query existing MongoDB replicaset members
-                  community.mongodb.mongodb_shell:
-                    eval: "rs.status().members"
-                    mongo_cmd: "{{ mongodb_shell | default(omit) }}"
-                  register: _query_members
-                  changed_when: false
+            - name: Query existing MongoDB replicaset members
+              community.mongodb.mongodb_shell:
+                eval: "rs.status().members"
+                mongo_cmd: "{{ mongodb_shell | default(omit) }}"
+              register: _query_members
+              changed_when: false
 
-                - name: Set replicaset member facts
-                  ansible.builtin.set_fact:
-                    _existing_members: "{{ _query_members.transformed_output | map(attribute='name') }}"
+            - name: Set replicaset member facts
+              ansible.builtin.set_fact:
+                _existing_members: "{{ _query_members.transformed_output | map(attribute='name') }}"
 
-                - name: Debug replicaset members
-                  ansible.builtin.debug:
-                    var: _existing_members
+            - name: Debug replicaset members
+              ansible.builtin.debug:
+                var: _existing_members
 
-                - name: Check cluster members
-                  ansible.builtin.assert:
-                    that: _config_members | difference(_existing_members) | length == 0
+            - name: Check cluster members
+              ansible.builtin.assert:
+                that: _config_members | difference(_existing_members) | length == 0
 
         - name: Attempt 1 node cluster scale down
           when: inventory_hostname in _hosts1
@@ -311,6 +379,18 @@
                 _addresses: "{{ _hosts1 | map('extract', hostvars, _addr_attrs) }}"
                 _members: "{{ _addresses | list }}"
                 mongodb_replicaset_members: "{{ _members | map(_map_format, '%s:' + mongodb_port) | list }}"
+                mongodb_votes_group: "_replicaset_votes_down_one"
+                mongodb_non_votes_group: "_replicaset_non_votes_down_one"
+                mongodb_voting_group: "_replicaset_voting_down_one"
+                mongodb_priority_group: "_replicaset_priority_down_one"
+                mongodb_non_priority_group: "_replicaset_non_priority_down_one"
+                mongodb_compliant_group: "_replicaset_compliant_down_one"
+                mongodb_non_compliant_group: "_replicaset_non_compliant_down_one"
+                mongodb_non_voting_group: "_replicaset_non_voting_down_one"
+                mongodb_alien_group: "_replicaset_alien_down_one"
+                mongodb_non_alien_group: "_replicaset_non_alien_down_one"
+                mongodb_member_group: "_replicaset_member_down_one"
+                mongodb_failed_group: "_replicaset_failed_down_one"
           rescue:
             - name: Set result facts
               ansible.builtin.set_fact:
