@@ -1,0 +1,163 @@
+---
+dependency:
+  name: galaxy
+  options:
+    role-file: requirements.yml
+    requirements-file: requirements.yml
+driver:
+  name: docker
+platforms:
+  - name: mongodb-votes-01
+    image: "geerlingguy/docker-${MOLECULE_DOCKER_IMAGE:-ubuntu2204}-ansible:latest"
+    command: ${MOLECULE_COMMAND:-"/lib/systemd/systemd"}
+    cgroupns_mode: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    privileged: true
+    pre_build_image: true
+    tmpfs:
+      - /tmp
+      - /opt
+  - name: mongodb-votes-02
+    image: "geerlingguy/docker-${MOLECULE_DOCKER_IMAGE:-ubuntu2204}-ansible:latest"
+    command: ${MOLECULE_COMMAND:-"/lib/systemd/systemd"}
+    cgroupns_mode: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    privileged: true
+    pre_build_image: true
+    tmpfs:
+      - /tmp
+      - /opt
+  - name: mongodb-votes-03
+    image: "geerlingguy/docker-${MOLECULE_DOCKER_IMAGE:-ubuntu2204}-ansible:latest"
+    command: ${MOLECULE_COMMAND:-"/lib/systemd/systemd"}
+    cgroupns_mode: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    privileged: true
+    pre_build_image: true
+    tmpfs:
+      - /tmp
+      - /opt
+  - name: mongodb-votes-04
+    image: "geerlingguy/docker-${MOLECULE_DOCKER_IMAGE:-ubuntu2204}-ansible:latest"
+    command: ${MOLECULE_COMMAND:-"/lib/systemd/systemd"}
+    cgroupns_mode: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    privileged: true
+    pre_build_image: true
+    tmpfs:
+      - /tmp
+      - /opt
+  - name: mongodb-votes-05
+    image: "geerlingguy/docker-${MOLECULE_DOCKER_IMAGE:-ubuntu2204}-ansible:latest"
+    command: ${MOLECULE_COMMAND:-"/lib/systemd/systemd"}
+    cgroupns_mode: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    privileged: true
+    pre_build_image: true
+    tmpfs:
+      - /tmp
+      - /opt
+  - name: mongodb-votes-06
+    image: "geerlingguy/docker-${MOLECULE_DOCKER_IMAGE:-ubuntu2204}-ansible:latest"
+    command: ${MOLECULE_COMMAND:-"/lib/systemd/systemd"}
+    cgroupns_mode: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    privileged: true
+    pre_build_image: true
+    tmpfs:
+      - /tmp
+      - /opt
+  - name: mongodb-votes-07
+    image: "geerlingguy/docker-${MOLECULE_DOCKER_IMAGE:-ubuntu2204}-ansible:latest"
+    command: ${MOLECULE_COMMAND:-"/lib/systemd/systemd"}
+    cgroupns_mode: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    privileged: true
+    pre_build_image: true
+    tmpfs:
+      - /tmp
+      - /opt
+  - name: mongodb-votes-08
+    image: "geerlingguy/docker-${MOLECULE_DOCKER_IMAGE:-ubuntu2204}-ansible:latest"
+    command: ${MOLECULE_COMMAND:-"/lib/systemd/systemd"}
+    cgroupns_mode: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    privileged: true
+    pre_build_image: true
+    tmpfs:
+      - /tmp
+      - /opt
+  - name: mongodb-votes-09
+    image: "geerlingguy/docker-${MOLECULE_DOCKER_IMAGE:-ubuntu2204}-ansible:latest"
+    command: ${MOLECULE_COMMAND:-"/lib/systemd/systemd"}
+    cgroupns_mode: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    privileged: true
+    pre_build_image: true
+    tmpfs:
+      - /tmp
+      - /opt
+provisioner:
+  name: ansible
+  playbooks:
+    prepare: ../common/prepare.yml
+    verify: ../common/verify.yml
+    converge: ../common/converge.yml
+  config_options:
+    defaults:
+      callbacks_enabled: ansible.posix.profile_tasks
+  inventory:
+    hosts:
+      all:
+        vars:
+          mongodb_replicaset_name: test
+          mongodb_firewall_state: stopped
+          mongodb_sharding_role: shardsvr
+        hosts:
+          mongodb-votes-01:
+            mongodb_votes: 1
+            mongodb_priority: 1
+          mongodb-votes-02:
+            mongodb_votes: 1
+            mongodb_priority: 1
+          mongodb-votes-03:
+            mongodb_votes: 1
+            mongodb_priority: 1
+          mongodb-votes-04:
+            mongodb_votes: 1
+            mongodb_priority: 1
+          mongodb-votes-05:
+            mongodb_votes: 1
+            mongodb_priority: 1
+          mongodb-votes-06:
+            mongodb_votes: 1
+            mongodb_priority: 1
+          mongodb-votes-07:
+            mongodb_votes: 1
+            mongodb_priority: 1
+          mongodb-votes-08:
+            mongodb_votes: 0
+            mongodb_priority: 0
+          mongodb-votes-09:
+            mongodb_votes: 0
+            mongodb_priority: 0
+verifier:
+  name: ansible
+scenario:
+  prepare_sequence:
+    - prepare
+  converge_sequence:
+    - converge
+  destroy_sequence:
+    - destroy
+  cleanup_sequence:
+    - cleanup
