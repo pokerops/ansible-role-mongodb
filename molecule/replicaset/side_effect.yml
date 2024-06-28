@@ -10,32 +10,35 @@
     _hosts6: "{{ play_hosts[:6] }}"
     _hosts7: "{{ play_hosts[:7] }}"
   tasks:
-    - name: Set base facts
-      ansible.builtin.set_fact:
-        _reconfigure1_failed: false
-        _reconfigure2_failed: false
-        _reconfigure4_failed: false
-        _reconfigure6_failed: false
+    - name: Manage python interpreter
+      tags: always
+      block:
+        - name: Set base facts
+          ansible.builtin.set_fact:
+            _reconfigure1_failed: false
+            _reconfigure2_failed: false
+            _reconfigure4_failed: false
+            _reconfigure6_failed: false
 
-    - name: Create virtualenv
-      ansible.builtin.tempfile:
-        state: directory
-        prefix: .virtualenv
-        path: "~"
-      register: _virtualenv_tmpdir
-      changed_when: false
+        - name: Create virtualenv
+          ansible.builtin.tempfile:
+            state: directory
+            prefix: .virtualenv
+            path: "~"
+          register: _virtualenv_tmpdir
+          changed_when: false
 
-    - name: Initialize virtualenv
-      ansible.builtin.pip:
-        name:
-          - pymongo
-          - python-gnupg
-        virtualenv: "{{ _virtualenv_tmpdir.path }}/venv"
-      changed_when: false
+        - name: Initialize virtualenv
+          ansible.builtin.pip:
+            name:
+              - pymongo
+              - python-gnupg
+            virtualenv: "{{ _virtualenv_tmpdir.path }}/venv"
+          changed_when: false
 
-    - name: Change python interpreter
-      ansible.builtin.set_fact:
-        ansible_python_interpreter: "{{ _virtualenv_tmpdir.path }}/venv/bin/python"
+        - name: Change python interpreter
+          ansible.builtin.set_fact:
+            ansible_python_interpreter: "{{ _virtualenv_tmpdir.path }}/venv/bin/python"
 
     - name: Test replicaset reconfiguration scenarios
       block:
