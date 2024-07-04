@@ -176,18 +176,17 @@
       until: mongodb_rs is succeeded
       changed_when: false
 
-    - name: Set replicaset primary facts
+    - name: Identify replicaset primary member
       ansible.builtin.set_fact:
-        replicaset_primary: "{{ _revaddrs[_primary] }}"
+        replicaset_is_primary: "{{ _is_primary }}"
       vars:
-        _primary: "{{ mongodb_rs.transformed_output.primary | split(':') | first }}"
+        _is_primary: "{{ mongodb_rs.transformed_output | list | first | bool }}"
 
     - name: Manage existing MongoDB replicaset
-      delegate_to: "{{ replicaset_primary }}"
-      run_once: true
       when:
         - mongodb_replicaset_init | bool
         - replicaset_members | length > 0
+        - replicaset_is_primary | bool
         - mongodb_replicaset_update | bool
       block:
         - name: Query existing MongoDB replicaset config
@@ -199,6 +198,12 @@
           register: mongodb_config
           until: mongodb_config is succeeded
           changed_when: false
+
+        - name: Set replicaset primary facts
+          ansible.builtin.set_fact:
+            replicaset_primary: "{{ _revaddrs[_primary] }}"
+          vars:
+            _primary: "{{ mongodb_rs.transformed_output.primary | split(':') | first }}"
 
         - name: Set MongoDB member facts
           ansible.builtin.set_fact:
@@ -342,5 +347,4 @@
       community.mongodb.mongodb_shell:
         eval: "rs.secondaryOk()"
       changed_when: false
-      delegate_to: "{{ replicaset_primary }}"
-      run_once: true
+      when: replicaset_is_primary | bool
