@@ -169,7 +169,7 @@
 
     - name: Query replicaset membership
       community.mongodb.mongodb_shell:
-        eval: "rs.isMaster().ismaster"
+        eval: "rs.isMaster()"
       retries: "{{ mongodb_query_retries }}"
       delay: "{{ mongodb_query_delay }}"
       register: mongodb_rs
@@ -178,13 +178,16 @@
 
     - name: Set replicaset primary facts
       ansible.builtin.set_fact:
-        replicaset_primary: "{{ mongodb_rs.transformed_output | list | first | bool }}"
+        replicaset_primary: "{{ _revaddrs[_primary] }}"
+      vars:
+        _primary: "{{ mongodb_rs.transformed_output.primary | split(':') | first }}"
 
     - name: Manage existing MongoDB replicaset
+      delegate_to: "{{ replicaset_primary }}"
+      run_once: true
       when:
         - mongodb_replicaset_init | bool
         - replicaset_members | length > 0
-        - replicaset_primary | bool
         - mongodb_replicaset_update | bool
       block:
         - name: Query existing MongoDB replicaset config
@@ -294,6 +297,18 @@
             _votes: "[{{ _hosts | map('extract', hostvars, ['_mongodb_votes']) | map(_map_format, _votes_format) | join(',') }}]"
             _new_votes: "{{ _host_members | zip(_votes, _priorities) | map('combine') }}"
 
+        - name: Debug MongoDB replicaset primary
+          ansible.builtin.debug:
+            msg: "MongoDB primary member is: {{ replicaset_primary }}"
+
+        - name: Verify MongoDB replicaset status
+          ansible.builtin.assert:
+            that: _votes | int == 1 and _priority | float > 0
+            fail_msg: "MongoDB primary {{ replicaset_primary }} cannot be blocked. Change priority to a lower value first"
+          vars:
+            _votes: "{{ hostvars[replicaset_primary]['_mongodb_votes'] }}"
+            _priority: "{{ hostvars[replicaset_primary]['_mongodb_priority'] }}"
+
         - name: Manage existing MongoDB replicaset members
           ansible.builtin.include_tasks: "reconfigure.yml"
           vars:
@@ -327,4 +342,5 @@
       community.mongodb.mongodb_shell:
         eval: "rs.secondaryOk()"
       changed_when: false
-      when: replicaset_primary | bool
+      delegate_to: "{{ replicaset_primary }}"
+      run_once: true
