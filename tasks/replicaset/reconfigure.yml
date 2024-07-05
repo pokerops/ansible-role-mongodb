@@ -1,4 +1,7 @@
 ---
+- name: Manage replicaset primary tasks
+  ansible.builtin.include_tasks: "primary.yml"
+
 - name: Query existing MongoDB replicaset config
   community.mongodb.mongodb_shell:
     eval: "rs.conf().members"

@@ -167,20 +167,8 @@
           until: mongodb_status is succeeded
           changed_when: false
 
-    - name: Query replicaset membership
-      community.mongodb.mongodb_shell:
-        eval: "rs.isMaster()"
-      retries: "{{ mongodb_query_retries }}"
-      delay: "{{ mongodb_query_delay }}"
-      register: mongodb_rs
-      until: mongodb_rs is succeeded
-      changed_when: false
-
-    - name: Identify replicaset primary member
-      ansible.builtin.set_fact:
-        replicaset_is_primary: "{{ _is_primary }}"
-      vars:
-        _is_primary: "{{ mongodb_rs.transformed_output.ismaster | bool }}"
+    - name: Manage replicaset primary tasks
+      ansible.builtin.include_tasks: "primary.yml"
 
     - name: Manage existing MongoDB replicaset
       when:
@@ -198,12 +186,6 @@
           register: mongodb_config
           until: mongodb_config is succeeded
           changed_when: false
-
-        - name: Set replicaset primary facts
-          ansible.builtin.set_fact:
-            replicaset_primary: "{{ _revaddrs[_primary] }}"
-          vars:
-            _primary: "{{ mongodb_rs.transformed_output.primary | split(':') | first }}"
 
         - name: Set MongoDB member facts
           ansible.builtin.set_fact:
@@ -301,18 +283,6 @@
             _votes_format: "{ \"votes\": \"%s\" }"
             _votes: "[{{ _hosts | map('extract', hostvars, ['_mongodb_votes']) | map(_map_format, _votes_format) | join(',') }}]"
             _new_votes: "{{ _host_members | zip(_votes, _priorities) | map('combine') }}"
-
-        - name: Debug MongoDB replicaset primary
-          ansible.builtin.debug:
-            msg: "MongoDB primary member is: {{ replicaset_primary }}"
-
-        - name: Verify MongoDB replicaset status
-          ansible.builtin.assert:
-            that: _votes | int == 1 and _priority | float > 0
-            fail_msg: "MongoDB primary {{ replicaset_primary }} cannot be blocked. Change priority to a lower value first"
-          vars:
-            _votes: "{{ hostvars[replicaset_primary]['_mongodb_votes'] }}"
-            _priority: "{{ hostvars[replicaset_primary]['_mongodb_priority'] }}"
 
         - name: Manage existing MongoDB replicaset members
           ansible.builtin.include_tasks: "reconfigure.yml"
