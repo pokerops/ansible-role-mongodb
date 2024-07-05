@@ -180,7 +180,7 @@
       ansible.builtin.set_fact:
         replicaset_is_primary: "{{ _is_primary }}"
       vars:
-        _is_primary: "{{ mongodb_rs.transformed_output | list | first | bool }}"
+        _is_primary: "{{ mongodb_rs.transformed_output.ismaster | bool }}"
 
     - name: Manage existing MongoDB replicaset
       when:
