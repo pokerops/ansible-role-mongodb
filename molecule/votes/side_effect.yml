@@ -140,9 +140,13 @@
                 _host_addrs: "{{ _hosts | map('extract', hostvars, ['ansible_default_ipv4', 'address']) }}"
                 _primary_host: "{{ _revaddrs[_primary] }}"
 
-            - name: Debug MongoDB primary
+            - name: Debug MongoDB primary before votes change
               ansible.builtin.debug:
                 var: replicaset_primary_before
+
+            - name: Debug MongoDB primary after votes change
+              ansible.builtin.debug:
+                var: replicaset_primary_after
 
             - name: Check MongoDB primary change
               ansible.builtin.assert:
