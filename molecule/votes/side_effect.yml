@@ -50,6 +50,104 @@
 
     - name: Test votes reconfiguration scenarios
       block:
+        - name: Change MongoDB votes and priority for primary
+          block:
+            - name: Set voting facts
+              ansible.builtin.set_fact:
+                mongodb_votes: "{{ _votes }}"
+                mongodb_priority: "{{ _priority }}"
+              vars:
+                _votes: "{{ 1 if not inventory_hostname in _non_voting_4 else 0 }}"
+                _priority: "{{ 1 if not inventory_hostname in _non_voting_4 else 0 }}"
+
+            - name: Query replicaset membership
+              community.mongodb.mongodb_shell:
+                eval: "rs.isMaster()"
+              register: mongodb_rs
+              until: mongodb_rs is succeeded
+              changed_when: false
+
+            - name: Compute MongoDB primary facts
+              ansible.builtin.set_fact:
+                replicaset_primary_before: "{{ _primary_host }}"
+              vars:
+                _primary: "{{ mongodb_rs.transformed_output.primary | split(':') | first }}"
+                _hosts: "{{ play_hosts }}"
+                _revaddrs: "{{ _host_addrs | zip(_hosts) | community.general.dict }}"
+                _host_addrs: "{{ _hosts | map('extract', hostvars, ['ansible_default_ipv4', 'address']) }}"
+                _primary_host: "{{ _revaddrs[_primary] }}"
+
+            - name: Set replicaset primary facts
+              ansible.builtin.set_fact:
+                mongodb_votes: 1
+                mongodb_priority: 0.5
+              when: inventory_hostname == replicaset_primary_before
+
+            - name: Change MongoDB votes and priority for primary
+              ansible.builtin.include_role:
+                name: pokerops.mongodb
+              vars:
+                mongodb_votes_group: "_replicaset_votes_primary_priority"
+                mongodb_non_votes_group: "_replicaset_non_votes_primary_priority"
+                mongodb_voting_group: "_replicaset_voting_primary_priority"
+                mongodb_priority_group: "_replicaset_priority_primary_priority"
+                mongodb_non_priority_group: "_replicaset_non_priority_primary_priority"
+                mongodb_compliant_group: "_replicaset_compliant_primary_priority"
+                mongodb_non_compliant_group: "_replicaset_non_compliant_primary_priority"
+                mongodb_non_voting_group: "_replicaset_non_voting_primary_priority"
+                mongodb_alien_group: "_replicaset_alien_primary_priority"
+                mongodb_non_alien_group: "_replicaset_non_alien_primary_priority"
+                mongodb_member_group: "_replicaset_member_primary_priority"
+                mongodb_failed_group: "_replicaset_failed_primary_priority"
+
+            - name: Set replicaset primary facts
+              ansible.builtin.set_fact:
+                mongodb_votes: 0
+                mongodb_priority: 0
+              when: inventory_hostname == replicaset_primary_before
+
+            - name: Change MongoDB votes and priority for primary
+              ansible.builtin.include_role:
+                name: pokerops.mongodb
+              vars:
+                mongodb_votes_group: "_replicaset_votes_stepdown"
+                mongodb_non_votes_group: "_replicaset_non_votes_stepdown"
+                mongodb_voting_group: "_replicaset_voting_stepdown"
+                mongodb_priority_group: "_replicaset_priority_stepdown"
+                mongodb_non_priority_group: "_replicaset_non_priority_stepdown"
+                mongodb_compliant_group: "_replicaset_compliant_stepdown"
+                mongodb_non_compliant_group: "_replicaset_non_compliant_stepdown"
+                mongodb_non_voting_group: "_replicaset_non_voting_stepdown"
+                mongodb_alien_group: "_replicaset_alien_stepdown"
+                mongodb_non_alien_group: "_replicaset_non_alien_stepdown"
+                mongodb_member_group: "_replicaset_member_stepdown"
+                mongodb_failed_group: "_replicaset_failed_stepdown"
+
+            - name: Query replicaset membership
+              community.mongodb.mongodb_shell:
+                eval: "rs.isMaster()"
+              register: mongodb_rs
+              until: mongodb_rs is succeeded
+              changed_when: false
+
+            - name: Compute MongoDB primary facts
+              ansible.builtin.set_fact:
+                replicaset_primary_after: "{{ _primary_host }}"
+              vars:
+                _primary: "{{ mongodb_rs.transformed_output.primary | split(':') | first }}"
+                _hosts: "{{ play_hosts }}"
+                _revaddrs: "{{ _host_addrs | zip(_hosts) | community.general.dict }}"
+                _host_addrs: "{{ _hosts | map('extract', hostvars, ['ansible_default_ipv4', 'address']) }}"
+                _primary_host: "{{ _revaddrs[_primary] }}"
+
+            - name: Debug MongoDB primary
+              ansible.builtin.debug:
+                var: replicaset_primary_before
+
+            - name: Check MongoDB primary change
+              ansible.builtin.assert:
+                that: replicaset_primary_before != replicaset_primary_after
+
         - name: Set 6 non-votes members
           block:
             - name: Query replicaset membership
@@ -480,101 +578,3 @@
               ansible.builtin.assert:
                 that: _votesprimary_failed
                 fail_msg: "broken replicaset member configuration operation must fail"
-
-        - name: Change MongoDB votes and priority for primary
-          block:
-            - name: Set voting facts
-              ansible.builtin.set_fact:
-                mongodb_votes: "{{ _votes }}"
-                mongodb_priority: "{{ _priority }}"
-              vars:
-                _votes: "{{ 1 if not inventory_hostname in _non_voting_4 else 0 }}"
-                _priority: "{{ 1 if not inventory_hostname in _non_voting_4 else 0 }}"
-
-            - name: Query replicaset membership
-              community.mongodb.mongodb_shell:
-                eval: "rs.isMaster()"
-              register: mongodb_rs
-              until: mongodb_rs is succeeded
-              changed_when: false
-
-            - name: Compute MongoDB primary facts
-              ansible.builtin.set_fact:
-                replicaset_primary_before: "{{ _primary_host }}"
-              vars:
-                _primary: "{{ mongodb_rs.transformed_output.primary | split(':') | first }}"
-                _hosts: "{{ play_hosts }}"
-                _revaddrs: "{{ _host_addrs | zip(_hosts) | community.general.dict }}"
-                _host_addrs: "{{ _hosts | map('extract', hostvars, ['ansible_default_ipv4', 'address']) }}"
-                _primary_host: "{{ _revaddrs[_primary] }}"
-
-            - name: Set replicaset primary facts
-              ansible.builtin.set_fact:
-                mongodb_votes: 1
-                mongodb_priority: 0.5
-              when: inventory_hostname == replicaset_primary_before
-
-            - name: Change MongoDB votes and priority for primary
-              ansible.builtin.include_role:
-                name: pokerops.mongodb
-              vars:
-                mongodb_votes_group: "_replicaset_votes_primary_priority"
-                mongodb_non_votes_group: "_replicaset_non_votes_primary_priority"
-                mongodb_voting_group: "_replicaset_voting_primary_priority"
-                mongodb_priority_group: "_replicaset_priority_primary_priority"
-                mongodb_non_priority_group: "_replicaset_non_priority_primary_priority"
-                mongodb_compliant_group: "_replicaset_compliant_primary_priority"
-                mongodb_non_compliant_group: "_replicaset_non_compliant_primary_priority"
-                mongodb_non_voting_group: "_replicaset_non_voting_primary_priority"
-                mongodb_alien_group: "_replicaset_alien_primary_priority"
-                mongodb_non_alien_group: "_replicaset_non_alien_primary_priority"
-                mongodb_member_group: "_replicaset_member_primary_priority"
-                mongodb_failed_group: "_replicaset_failed_primary_priority"
-
-            - name: Set replicaset primary facts
-              ansible.builtin.set_fact:
-                mongodb_votes: 0
-                mongodb_priority: 0
-              when: inventory_hostname == replicaset_primary_before
-
-            - name: Change MongoDB votes and priority for primary
-              ansible.builtin.include_role:
-                name: pokerops.mongodb
-              vars:
-                mongodb_votes_group: "_replicaset_votes_stepdown"
-                mongodb_non_votes_group: "_replicaset_non_votes_stepdown"
-                mongodb_voting_group: "_replicaset_voting_stepdown"
-                mongodb_priority_group: "_replicaset_priority_stepdown"
-                mongodb_non_priority_group: "_replicaset_non_priority_stepdown"
-                mongodb_compliant_group: "_replicaset_compliant_stepdown"
-                mongodb_non_compliant_group: "_replicaset_non_compliant_stepdown"
-                mongodb_non_voting_group: "_replicaset_non_voting_stepdown"
-                mongodb_alien_group: "_replicaset_alien_stepdown"
-                mongodb_non_alien_group: "_replicaset_non_alien_stepdown"
-                mongodb_member_group: "_replicaset_member_stepdown"
-                mongodb_failed_group: "_replicaset_failed_stepdown"
-
-            - name: Query replicaset membership
-              community.mongodb.mongodb_shell:
-                eval: "rs.isMaster()"
-              register: mongodb_rs
-              until: mongodb_rs is succeeded
-              changed_when: false
-
-            - name: Compute MongoDB primary facts
-              ansible.builtin.set_fact:
-                replicaset_primary_after: "{{ _primary_host }}"
-              vars:
-                _primary: "{{ mongodb_rs.transformed_output.primary | split(':') | first }}"
-                _hosts: "{{ play_hosts }}"
-                _revaddrs: "{{ _host_addrs | zip(_hosts) | community.general.dict }}"
-                _host_addrs: "{{ _hosts | map('extract', hostvars, ['ansible_default_ipv4', 'address']) }}"
-                _primary_host: "{{ _revaddrs[_primary] }}"
-
-            - name: Debug MongoDB primary
-              ansible.builtin.debug:
-                var: replicaset_primary_before
-
-            - name: Check MongoDB primary change
-              ansible.builtin.assert:
-                that: replicaset_primary_before != replicaset_primary_after
