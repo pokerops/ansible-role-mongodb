@@ -1,0 +1,584 @@
+---
+- name: Reconfigure replica set vote members
+  hosts: all
+  tasks:
+    - name: Set base facts
+      ansible.builtin.set_fact:
+        _votes1_failed: false
+        _votes2_failed: false
+        _votes4_failed: false
+        _votes6_failed: false
+        _votesprimary_failed: false
+        _all_votes_failed: false
+        _unexpected_votes_failed: false
+        _mixed_votes_failed: false
+        _string_votes_failed: false
+        _map_format: "{{ map_format }}"
+        _addr_attrs: "{{ addr_attrs }}"
+        _non_voting_1: "{{ play_hosts[:1] }}"
+        _non_voting_3: "{{ play_hosts[:3] }}"
+        _non_voting_4: "{{ play_hosts[-4:] }}"
+        _non_voting_6: "{{ play_hosts[-6:] }}"
+        _mongodb_port: "{{ _port }}"
+        mongodb_replicaset_members: "{{ _rs_members | map(map_format, '%s:' + _port) | list }}"
+      vars:
+        _rs_addresses: "{{ play_hosts | map('extract', hostvars, addr_attrs) }}"
+        addr_attrs: ['ansible_default_ipv4', 'address']
+        map_format: 'nephelaiio.plugins.map_format'
+        _rs_members: "{{ _rs_addresses | list }}"
+        _port: "{{ mongodb_port | default('27017') }}"
+
+    - name: Create virtualenv
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: .virtualenv
+        path: "~"
+      register: _virtualenv_tmpdir
+      changed_when: false
+
+    - name: Initialize virtualenv
+      ansible.builtin.pip:
+        name:
+          - pymongo
+          - python-gnupg
+        virtualenv: "{{ _virtualenv_tmpdir.path }}/venv"
+      changed_when: false
+
+    - name: Change python interpreter
+      ansible.builtin.set_fact:
+        ansible_python_interpreter: "{{ _virtualenv_tmpdir.path }}/venv/bin/python"
+
+    - name: Test votes reconfiguration scenarios
+      block:
+        - name: Change MongoDB votes and priority for primary
+          block:
+            - name: Set voting facts
+              ansible.builtin.set_fact:
+                mongodb_votes: "{{ _votes }}"
+                mongodb_priority: "{{ _priority }}"
+              vars:
+                _votes: "{{ 1 if not inventory_hostname in _non_voting_4 else 0 }}"
+                _priority: "{{ 1 if not inventory_hostname in _non_voting_4 else 0 }}"
+
+            - name: Query replicaset membership
+              community.mongodb.mongodb_shell:
+                eval: "rs.isMaster()"
+              register: mongodb_rs
+              until: mongodb_rs is succeeded
+              changed_when: false
+
+            - name: Compute MongoDB primary facts
+              ansible.builtin.set_fact:
+                replicaset_primary_before: "{{ _primary_host }}"
+              vars:
+                _primary: "{{ mongodb_rs.transformed_output.primary | split(':') | first }}"
+                _hosts: "{{ play_hosts }}"
+                _revaddrs: "{{ _host_addrs | zip(_hosts) | community.general.dict }}"
+                _host_addrs: "{{ _hosts | map('extract', hostvars, ['ansible_default_ipv4', 'address']) }}"
+                _primary_host: "{{ _revaddrs[_primary] }}"
+
+            - name: Set replicaset primary facts
+              ansible.builtin.set_fact:
+                mongodb_votes: 1
+                mongodb_priority: 0.5
+              when: inventory_hostname == replicaset_primary_before
+
+            - name: Change MongoDB votes and priority for primary
+              ansible.builtin.include_role:
+                name: pokerops.mongodb
+              vars:
+                mongodb_votes_group: "_replicaset_votes_primary_priority"
+                mongodb_non_votes_group: "_replicaset_non_votes_primary_priority"
+                mongodb_voting_group: "_replicaset_voting_primary_priority"
+                mongodb_priority_group: "_replicaset_priority_primary_priority"
+                mongodb_non_priority_group: "_replicaset_non_priority_primary_priority"
+                mongodb_compliant_group: "_replicaset_compliant_primary_priority"
+                mongodb_non_compliant_group: "_replicaset_non_compliant_primary_priority"
+                mongodb_non_voting_group: "_replicaset_non_voting_primary_priority"
+                mongodb_alien_group: "_replicaset_alien_primary_priority"
+                mongodb_non_alien_group: "_replicaset_non_alien_primary_priority"
+                mongodb_member_group: "_replicaset_member_primary_priority"
+                mongodb_failed_group: "_replicaset_failed_primary_priority"
+
+            - name: Set replicaset primary facts
+              ansible.builtin.set_fact:
+                mongodb_votes: 0
+                mongodb_priority: 0
+              when: inventory_hostname == replicaset_primary_before
+
+            - name: Change MongoDB votes and priority for primary
+              ansible.builtin.include_role:
+                name: pokerops.mongodb
+              vars:
+                mongodb_votes_group: "_replicaset_votes_stepdown"
+                mongodb_non_votes_group: "_replicaset_non_votes_stepdown"
+                mongodb_voting_group: "_replicaset_voting_stepdown"
+                mongodb_priority_group: "_replicaset_priority_stepdown"
+                mongodb_non_priority_group: "_replicaset_non_priority_stepdown"
+                mongodb_compliant_group: "_replicaset_compliant_stepdown"
+                mongodb_non_compliant_group: "_replicaset_non_compliant_stepdown"
+                mongodb_non_voting_group: "_replicaset_non_voting_stepdown"
+                mongodb_alien_group: "_replicaset_alien_stepdown"
+                mongodb_non_alien_group: "_replicaset_non_alien_stepdown"
+                mongodb_member_group: "_replicaset_member_stepdown"
+                mongodb_failed_group: "_replicaset_failed_stepdown"
+
+            - name: Query replicaset membership
+              community.mongodb.mongodb_shell:
+                eval: "rs.isMaster()"
+              register: mongodb_rs
+              until: mongodb_rs is succeeded
+              changed_when: false
+
+            - name: Compute MongoDB primary facts
+              ansible.builtin.set_fact:
+                replicaset_primary_after: "{{ _primary_host }}"
+              vars:
+                _primary: "{{ mongodb_rs.transformed_output.primary | split(':') | first }}"
+                _hosts: "{{ play_hosts }}"
+                _revaddrs: "{{ _host_addrs | zip(_hosts) | community.general.dict }}"
+                _host_addrs: "{{ _hosts | map('extract', hostvars, ['ansible_default_ipv4', 'address']) }}"
+                _primary_host: "{{ _revaddrs[_primary] }}"
+
+            - name: Debug MongoDB primary before votes change
+              ansible.builtin.debug:
+                var: replicaset_primary_before
+
+            - name: Debug MongoDB primary after votes change
+              ansible.builtin.debug:
+                var: replicaset_primary_after
+
+            - name: Check MongoDB primary change
+              ansible.builtin.assert:
+                that: replicaset_primary_before != replicaset_primary_after
+
+        - name: Set 6 non-votes members
+          block:
+            - name: Query replicaset membership
+              community.mongodb.mongodb_shell:
+                eval: "rs.isMaster()"
+              register: mongodb_rs
+              until: mongodb_rs is succeeded
+              changed_when: false
+
+            - name: Set voting facts
+              ansible.builtin.set_fact:
+                mongodb_votes: "{{ _votes }}"
+                mongodb_priority: "{{ _priority }}"
+              vars:
+                _primary: "{{ mongodb_rs.transformed_output.primary | split(':') | first }}"
+                _hosts: "{{ play_hosts }}"
+                _revaddrs: "{{ _host_addrs | zip(_hosts) | community.general.dict }}"
+                _host_addrs: "{{ _hosts | map('extract', hostvars, ['ansible_default_ipv4', 'address']) }}"
+                _primary_host: "{{ inventory_hostname == _revaddrs[_primary] }}"
+                _votes: "{{ 1 if (not inventory_hostname in _non_voting_6 or _primary_host) else 0 }}"
+                _priority: "{{ 1 if (not inventory_hostname in _non_voting_6 or _primary_host) else 0 }}"
+
+            - name: Configure 6 non-votes members
+              ansible.builtin.include_role:
+                name: pokerops.mongodb
+              vars:
+                mongodb_votes_group: "_replicaset_votes_six"
+                mongodb_non_votes_group: "_replicaset_non_votes_six"
+                mongodb_voting_group: "_replicaset_voting_six"
+                mongodb_priority_group: "_replicaset_priority_six"
+                mongodb_non_priority_group: "_replicaset_non_priority_six"
+                mongodb_compliant_group: "_replicaset_compliant_six"
+                mongodb_non_compliant_group: "_replicaset_non_compliant_six"
+                mongodb_non_voting_group: "_replicaset_non_voting_six"
+                mongodb_alien_group: "_replicaset_alien_six"
+                mongodb_non_alien_group: "_replicaset_non_alien_six"
+                mongodb_member_group: "_replicaset_member_six"
+                mongodb_failed_group: "_replicaset_failed_six"
+
+            - name: Query existing MongoDB replicaset config
+              community.mongodb.mongodb_shell:
+                eval: "rs.conf().members"
+                mongo_cmd: "{{ mongodb_shell | default(omit) }}"
+              register: mongodb_config
+              changed_when: false
+
+            - name: Set non-voter member facts
+              ansible.builtin.set_fact:
+                _non_voters: "{{ _existing_config | selectattr('host', 'in', _members_non_voters) }}"
+              vars:
+                _addresses: "{{ _non_voting_6 | map('extract', hostvars, _addr_attrs) }}"
+                _members_non_voters: "{{ _addresses | map(_map_format, '%s:' + _mongodb_port) | list }}"
+                _existing_config: "{{ mongodb_config.transformed_output | list }}"
+
+            - name: Debug non-voter members
+              ansible.builtin.debug:
+                var: _non_voters
+
+            - name: Check non-voter members
+              ansible.builtin.assert:
+                that: _members_list | select('in', _addresses) | length == 6
+              vars:
+                _addresses: "{{ _non_voting_6 | map('extract', hostvars, _addr_attrs) }}"
+                _members: "{{ _non_voters | map(attribute='host') }}"
+                _members_list: "{{ _members | map('split', ':') | map('first') }}"
+
+        - name: Attempt votes and priorities defined as string
+          block:
+            - name: Set vote facts
+              ansible.builtin.set_fact:
+                mongodb_votes: "{{ _votes }}"
+                mongodb_priority: "{{ _priority }}"
+              vars:
+                _votes: "{{ 1 if not inventory_hostname in _non_voting_6 else 'bla' }}"
+                _priority: "{{ 1 if not inventory_hostname in _non_voting_6 else 'bla' }}"
+
+            - name: Attempt votes and priorities defined as string
+              ansible.builtin.include_role:
+                name: pokerops.mongodb
+              vars:
+                mongodb_votes_group: "_replicaset_votes_string"
+                mongodb_non_votes_group: "_replicaset_non_votes_string"
+                mongodb_voting_group: "_replicaset_voting_string"
+                mongodb_priority_group: "_replicaset_priority_string"
+                mongodb_non_priority_group: "_replicaset_non_priority_string"
+                mongodb_compliant_group: "_replicaset_compliant_string"
+                mongodb_non_compliant_group: "_replicaset_non_compliant_string"
+                mongodb_non_voting_group: "_replicaset_non_voting_string"
+                mongodb_alien_group: "_replicaset_alien_string"
+                mongodb_non_alien_group: "_replicaset_non_alien_string"
+                mongodb_member_group: "_replicaset_member_string"
+                mongodb_failed_group: "_replicaset_failed_string"
+          rescue:
+            - name: Set result facts
+              ansible.builtin.set_fact:
+                _string_votes_failed: true
+          always:
+            - name: Fail on broken replicaset member configuration
+              ansible.builtin.assert:
+                that: _string_votes_failed
+                fail_msg: "broken replicaset member configuration operation must fail"
+
+        - name: Set 4 non-votes members
+          block:
+            - name: Query replicaset membership
+              community.mongodb.mongodb_shell:
+                eval: "rs.isMaster()"
+              register: mongodb_rs
+              until: mongodb_rs is succeeded
+              changed_when: false
+
+            - name: Set voting facts
+              ansible.builtin.set_fact:
+                mongodb_votes: "{{ _votes }}"
+                mongodb_priority: "{{ _priority }}"
+              vars:
+                _primary: "{{ mongodb_rs.transformed_output.primary | split(':') | first }}"
+                _hosts: "{{ play_hosts }}"
+                _revaddrs: "{{ _host_addrs | zip(_hosts) | community.general.dict }}"
+                _host_addrs: "{{ _hosts | map('extract', hostvars, ['ansible_default_ipv4', 'address']) }}"
+                _primary_host: "{{ inventory_hostname == _revaddrs[_primary] }}"
+                _votes: "{{ 1 if (not inventory_hostname in _non_voting_4 or _primary_host) else 0 }}"
+                _priority: "{{ 1 if (not inventory_hostname in _non_voting_4 or _primary_host) else 0 }}"
+
+            - name: Configure 4 non-vote members
+              ansible.builtin.include_role:
+                name: pokerops.mongodb
+              vars:
+                mongodb_votes_group: "_replicaset_votes_four"
+                mongodb_non_votes_group: "_replicaset_non_votes_four"
+                mongodb_voting_group: "_replicaset_voting_four"
+                mongodb_priority_group: "_replicaset_priority_four"
+                mongodb_non_priority_group: "_replicaset_non_priority_four"
+                mongodb_compliant_group: "_replicaset_compliant_four"
+                mongodb_non_compliant_group: "_replicaset_non_compliant_four"
+                mongodb_non_voting_group: "_replicaset_non_voting_four"
+                mongodb_alien_group: "_replicaset_alien_four"
+                mongodb_non_alien_group: "_replicaset_non_alien_four"
+                mongodb_member_group: "_replicaset_member_four"
+                mongodb_failed_group: "_replicaset_failed_four"
+
+            - name: Query existing MongoDB replicaset config
+              community.mongodb.mongodb_shell:
+                eval: "rs.conf().members"
+                mongo_cmd: "{{ mongodb_shell | default(omit) }}"
+              register: mongodb_config
+              changed_when: false
+
+            - name: Set non-voter member facts
+              ansible.builtin.set_fact:
+                _non_voters: "{{ _existing_config | selectattr('host', 'in', _members_non_voters) }}"
+              vars:
+                _addresses: "{{ _non_voting_4 | map('extract', hostvars, _addr_attrs) }}"
+                _members_non_voters: "{{ _addresses | map(_map_format, '%s:' + _mongodb_port) | list }}"
+                _existing_config: "{{ mongodb_config.transformed_output | list }}"
+
+            - name: Debug non-voter members
+              ansible.builtin.debug:
+                var: _non_voters
+
+            - name: Check non-voter members
+              ansible.builtin.assert:
+                that: _members_list | select('in', _addresses) | length == 4
+              vars:
+                _addresses: "{{ _non_voting_4 | map('extract', hostvars, _addr_attrs) }}"
+                _members: "{{ _non_voters | map(attribute='host') }}"
+                _members_list: "{{ _members | map('split', ':') | map('first') }}"
+
+        - name: Attempt mixed votes and priorities
+          block:
+            - name: Set voting member facts
+              ansible.builtin.set_fact:
+                mongodb_votes: 1
+                mongodb_priority: 1
+              when: not inventory_hostname in _non_voting_4
+
+            - name: Set mixed voting member facts
+              ansible.builtin.set_fact:
+                mongodb_priority: 1
+                mongodb_votes: 0
+              when: inventory_hostname in _non_voting_4
+
+            - name: Attempt mixed votes and priorities
+              ansible.builtin.include_role:
+                name: pokerops.mongodb
+              vars:
+                mongodb_votes_group: "_replicaset_votes_mixed"
+                mongodb_non_votes_group: "_replicaset_non_votes_mixed"
+                mongodb_voting_group: "_replicaset_voting_mixed"
+                mongodb_priority_group: "_replicaset_priority_mixed"
+                mongodb_non_priority_group: "_replicaset_non_priority_mixed"
+                mongodb_compliant_group: "_replicaset_compliant_mixed"
+                mongodb_non_compliant_group: "_replicaset_non_compliant_mixed"
+                mongodb_non_voting_group: "_replicaset_non_voting_mixed"
+                mongodb_alien_group: "_replicaset_alien_mixed"
+                mongodb_non_alien_group: "_replicaset_non_alien_mixed"
+                mongodb_member_group: "_replicaset_member_mixed"
+                mongodb_failed_group: "_replicaset_failed_mixed"
+          rescue:
+            - name: Set result facts
+              ansible.builtin.set_fact:
+                _mixed_votes_failed: true
+          always:
+            - name: Fail on broken replicaset member configuration
+              ansible.builtin.assert:
+                that: _mixed_votes_failed
+                fail_msg: "broken replicaset member configuration operation must fail"
+
+        - name: Attempt all voting members
+          block:
+            - name: Set vote and priority facts
+              ansible.builtin.set_fact:
+                mongodb_votes: 1
+                mongodb_priority: 1
+
+            - name: Attempt all voting members
+              ansible.builtin.include_role:
+                name: pokerops.mongodb
+              vars:
+                mongodb_votes_group: "_replicaset_votes_all"
+                mongodb_non_votes_group: "_replicaset_non_votes_all"
+                mongodb_voting_group: "_replicaset_voting_all"
+                mongodb_priority_group: "_replicaset_priority_all"
+                mongodb_non_priority_group: "_replicaset_non_priority_all"
+                mongodb_compliant_group: "_replicaset_compliant_all"
+                mongodb_non_compliant_group: "_replicaset_non_compliant_all"
+                mongodb_non_voting_group: "_replicaset_non_voting_all"
+                mongodb_alien_group: "_replicaset_alien_all"
+                mongodb_non_alien_group: "_replicaset_non_alien_all"
+                mongodb_member_group: "_replicaset_member_all"
+                mongodb_failed_group: "_replicaset_failed_all"
+          rescue:
+            - name: Set result facts
+              ansible.builtin.set_fact:
+                _all_votes_failed: true
+          always:
+            - name: Fail on broken replicaset member configuration
+              ansible.builtin.assert:
+                that: _all_votes_failed
+                fail_msg: "broken replicaset member configuration operation must fail"
+
+        - name: Attempt votes greater than 1
+          block:
+            - name: Set vote facts
+              ansible.builtin.set_fact:
+                mongodb_votes: 2
+                mongodb_priority: 1
+
+            - name: Attempt votes greater than 1
+              ansible.builtin.include_role:
+                name: pokerops.mongodb
+              vars:
+                mongodb_votes_group: "_replicaset_votes_greater"
+                mongodb_non_votes_group: "_replicaset_non_votes_greater"
+                mongodb_voting_group: "_replicaset_voting_greater"
+                mongodb_priority_group: "_replicaset_priority_greater"
+                mongodb_non_priority_group: "_replicaset_non_priority_greater"
+                mongodb_compliant_group: "_replicaset_compliant_greater"
+                mongodb_non_compliant_group: "_replicaset_non_compliant_greater"
+                mongodb_non_voting_group: "_replicaset_non_voting_greater"
+                mongodb_alien_group: "_replicaset_alien_greater"
+                mongodb_non_alien_group: "_replicaset_non_alien_greater"
+                mongodb_member_group: "_replicaset_member_greater"
+                mongodb_failed_group: "_replicaset_failed_greater"
+          rescue:
+            - name: Set result facts
+              ansible.builtin.set_fact:
+                _unexpected_votes_failed: true
+          always:
+            - name: Fail on broken replicaset member configuration
+              ansible.builtin.assert:
+                that: _unexpected_votes_failed
+                fail_msg: "broken replicaset member configuration operation must fail"
+
+        - name: Attempt 1 voting member
+          block:
+            - name: Set voting facts
+              ansible.builtin.set_fact:
+                mongodb_votes: "{{ _votes }}"
+                mongodb_priority: "{{ _priority }}"
+              vars:
+                _votes: "{{ 1 if not inventory_hostname in _non_voting_1 else 0 }}"
+                _priority: "{{ 1 if not inventory_hostname in _non_voting_1 else 0 }}"
+
+            - name: Attempt 1 voting members
+              ansible.builtin.include_role:
+                name: pokerops.mongodb
+              vars:
+                mongodb_votes_group: "_replicaset_votes_one"
+                mongodb_non_votes_group: "_replicaset_non_votes_one"
+                mongodb_voting_group: "_replicaset_voting_one"
+                mongodb_priority_group: "_replicaset_priority_one"
+                mongodb_non_priority_group: "_replicaset_non_priority_one"
+                mongodb_compliant_group: "_replicaset_compliant_one"
+                mongodb_non_compliant_group: "_replicaset_non_compliant_one"
+                mongodb_non_voting_group: "_replicaset_non_voting_one"
+                mongodb_alien_group: "_replicaset_alien_one"
+                mongodb_non_alien_group: "_replicaset_non_alien_one"
+                mongodb_member_group: "_replicaset_member_one"
+                mongodb_failed_group: "_replicaset_failed_one"
+          rescue:
+            - name: Set result facts
+              ansible.builtin.set_fact:
+                _votes1_failed: true
+          always:
+            - name: Fail on broken replicaset member configuration
+              ansible.builtin.assert:
+                that: _votes1_failed
+                fail_msg: "broken replicaset member configuration operation must fail"
+
+        - name: Set 3 non-votes members
+          block:
+            - name: Query replicaset membership
+              community.mongodb.mongodb_shell:
+                eval: "rs.isMaster()"
+              register: mongodb_rs
+              until: mongodb_rs is succeeded
+              changed_when: false
+
+            - name: Set voting facts
+              ansible.builtin.set_fact:
+                mongodb_votes: "{{ _votes }}"
+                mongodb_priority: "{{ _priority }}"
+              vars:
+                _primary: "{{ mongodb_rs.transformed_output.primary | split(':') | first }}"
+                _hosts: "{{ play_hosts }}"
+                _revaddrs: "{{ _host_addrs | zip(_hosts) | community.general.dict }}"
+                _host_addrs: "{{ _hosts | map('extract', hostvars, ['ansible_default_ipv4', 'address']) }}"
+                _primary_host: "{{ inventory_hostname == _revaddrs[_primary] }}"
+                _votes: "{{ 1 if (not inventory_hostname in _non_voting_3 or _primary_host) else 0 }}"
+                _priority: "{{ 1 if (not inventory_hostname in _non_voting_3 or _primary_host) else 0 }}"
+
+            - name: Configure 7 replicaset voting members
+              ansible.builtin.include_role:
+                name: pokerops.mongodb
+              vars:
+                mongodb_votes_group: "_replicaset_votes_two"
+                mongodb_non_votes_group: "_replicaset_non_votes_two"
+                mongodb_voting_group: "_replicaset_voting_two"
+                mongodb_priority_group: "_replicaset_priority_two"
+                mongodb_non_priority_group: "_replicaset_non_priority_two"
+                mongodb_compliant_group: "_replicaset_compliant_two"
+                mongodb_non_compliant_group: "_replicaset_non_compliant_two"
+                mongodb_non_voting_group: "_replicaset_non_voting_two"
+                mongodb_alien_group: "_replicaset_alien_two"
+                mongodb_non_alien_group: "_replicaset_non_alien_two"
+                mongodb_member_group: "_replicaset_member_two"
+                mongodb_failed_group: "_replicaset_failed_two"
+
+            - name: Query existing MongoDB replicaset config
+              community.mongodb.mongodb_shell:
+                eval: "rs.conf().members"
+                mongo_cmd: "{{ mongodb_shell | default(omit) }}"
+              register: mongodb_config
+              changed_when: false
+
+            - name: Set non-voter member facts
+              ansible.builtin.set_fact:
+                _non_voters: "{{ _existing_config | selectattr('host', 'in', _members_non_voters) }}"
+              vars:
+                _addresses: "{{ _non_voting_3 | map('extract', hostvars, _addr_attrs) }}"
+                _members_non_voters: "{{ _addresses | map(_map_format, '%s:' + _mongodb_port) | list }}"
+                _existing_config: "{{ mongodb_config.transformed_output | list }}"
+
+            - name: Debug non-voter members
+              ansible.builtin.debug:
+                var: _non_voters
+
+            - name: Check non-voter members
+              ansible.builtin.assert:
+                that: _members_list | select('in', _addresses) | length == 3
+              vars:
+                _addresses: "{{ _non_voting_3 | map('extract', hostvars, _addr_attrs) }}"
+                _members: "{{ _non_voters | map(attribute='host') }}"
+                _members_list: "{{ _members | map('split', ':') | map('first') }}"
+
+        - name: Attempt block primary voting member
+          block:
+            - name: Set voting facts
+              ansible.builtin.set_fact:
+                mongodb_votes: "{{ _votes }}"
+                mongodb_priority: "{{ _priority }}"
+              vars:
+                _votes: "{{ 1 if not inventory_hostname in _non_voting_4 else 0 }}"
+                _priority: "{{ 1 if not inventory_hostname in _non_voting_4 else 0 }}"
+
+            - name: Query replicaset membership
+              community.mongodb.mongodb_shell:
+                eval: "rs.isMaster()"
+              register: mongodb_rs
+              until: mongodb_rs is succeeded
+              changed_when: false
+
+            - name: Set replicaset primary facts
+              ansible.builtin.set_fact:
+                mongodb_votes: 0
+                mongodb_priority: 0
+              vars:
+                _primary: "{{ mongodb_rs.transformed_output.primary | split(':') | first }}"
+                _hosts: "{{ play_hosts }}"
+                _revaddrs: "{{ _host_addrs | zip(_hosts) | community.general.dict }}"
+                _host_addrs: "{{ _hosts | map('extract', hostvars, ['ansible_default_ipv4', 'address']) }}"
+                _primary_host: "{{ _revaddrs[_primary] }}"
+              when: inventory_hostname == _primary_host
+
+            - name: Attempt block primary voting member
+              ansible.builtin.include_role:
+                name: pokerops.mongodb
+              vars:
+                mongodb_votes_group: "_replicaset_votes_primary"
+                mongodb_non_votes_group: "_replicaset_non_votes_primary"
+                mongodb_voting_group: "_replicaset_voting_primary"
+                mongodb_priority_group: "_replicaset_priority_primary"
+                mongodb_non_priority_group: "_replicaset_non_priority_primary"
+                mongodb_compliant_group: "_replicaset_compliant_primary"
+                mongodb_non_compliant_group: "_replicaset_non_compliant_primary"
+                mongodb_non_voting_group: "_replicaset_non_voting_primary"
+                mongodb_alien_group: "_replicaset_alien_primary"
+                mongodb_non_alien_group: "_replicaset_non_alien_primary"
+                mongodb_member_group: "_replicaset_member_primary"
+                mongodb_failed_group: "_replicaset_failed_primary"
+          rescue:
+            - name: Set result facts
+              ansible.builtin.set_fact:
+                _votesprimary_failed: true
+          always:
+            - name: Fail on broken replicaset member configuration
+              ansible.builtin.assert:
+                that: _votesprimary_failed
+                fail_msg: "broken replicaset member configuration operation must fail"

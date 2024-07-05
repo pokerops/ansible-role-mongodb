@@ -4,21 +4,29 @@
     name: "{{ item.split('=') | first }}"
     selection: "{{ _lock_state }}"
   vars:
-    _version_regex: ".*=.*"
+    _version_regex: ".*[-|=].*"
     _package_versions: "{{ [mongodb_packages] | flatten | map('regex_search', _version_regex) }}"
     _package_holds: "{{ _package_versions | select('string') }}"
   loop: "{{ _package_holds }}"
   when: ansible_os_family == "Debian"
   changed_when: false
 
-- name: Configure yum package locks
-  community.general.yum_versionlock:
-    name: "{{ item.split('=') | first }}"
-    state: "{{ 'absent' if _lock_state == 'install' else 'present' }}"
-  vars:
-    _version_regex: ".*=.*"
-    _package_versions: "{{ [mongodb_packages] | flatten | map('regex_search', _version_regex) }}"
-    _package_holds: "{{ _package_versions | select('string') }}"
-  loop: "{{ _package_holds }}"
+- name: Manage yum package locks
   when: ansible_os_family == "RedHat"
-  changed_when: false
+  block:
+
+    - name: Install yum-plugin-versionlock
+      ansible.builtin.package:
+        name:
+          - yum-plugin-versionlock
+
+    - name: Configure yum package locks
+      community.general.yum_versionlock:
+        name: "{{ item.split('=') | first }}"
+        state: "{{ 'absent' if _lock_state == 'install' else 'present' }}"
+      vars:
+        _version_regex: ".*[-|=].*"
+        _package_versions: "{{ [mongodb_packages] | flatten | map('regex_search', _version_regex) }}"
+        _package_holds: "{{ _package_versions | select('string') }}"
+      loop: "{{ _package_holds }}"
+      changed_when: false

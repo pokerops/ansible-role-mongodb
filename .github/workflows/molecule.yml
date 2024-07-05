@@ -23,6 +23,7 @@ jobs:
           - name: install
           - name: ufw
           - name: replicaset
+          - name: votes
         image:
           - name: ubuntu2004
             command: /lib/systemd/systemd

@@ -1,0 +1,39 @@
+---
+- name: Query replicaset membership
+  community.mongodb.mongodb_shell:
+    eval: "rs.isMaster()"
+  retries: "{{ mongodb_query_retries }}"
+  delay: "{{ mongodb_query_delay }}"
+  register: mongodb_rs
+  until: mongodb_rs is succeeded
+  changed_when: false
+
+- name: Set replicaset primary facts
+  ansible.builtin.set_fact:
+    replicaset_is_primary: "{{ _is_primary }}"
+  vars:
+    _is_primary: "{{ mongodb_rs.transformed_output.ismaster | bool }}"
+
+- name: Compute replicaset primary member
+  ansible.builtin.set_fact:
+    replicaset_primary: "{{ _revaddrs[_primary] }}"
+  vars:
+    _primary: "{{ mongodb_rs.transformed_output.primary | split(':') | first }}"
+  delegate_to: localhost
+  delegate_facts: true
+  when: replicaset_is_primary | bool
+
+- name: Debug MongoDB replicaset primary
+  ansible.builtin.debug:
+    msg: "MongoDB primary member is: {{ _primary }}"
+  vars:
+    _primary: "{{ hostvars['localhost']['replicaset_primary'] }}"
+
+- name: Verify MongoDB replicaset status
+  ansible.builtin.assert:
+    that: _votes | int == 1 and _priority | float > 0
+    fail_msg: "MongoDB primary {{ _primary }} cannot be blocked. Change priority to a lower value first"
+  vars:
+    _primary: "{{ hostvars['localhost']['replicaset_primary'] }}"
+    _votes: "{{ hostvars[_primary]['_mongodb_votes'] }}"
+    _priority: "{{ hostvars[_primary]['_mongodb_priority'] }}"
