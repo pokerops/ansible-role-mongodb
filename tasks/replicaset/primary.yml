@@ -18,7 +18,7 @@
   ansible.builtin.set_fact:
     replicaset_primary: "{{ _revaddrs[_primary] if _primary not in _hosts else _primary }}"
   vars:
-    _hosts: "{{ replicaset_members + replicaset_aliens }}"
+    _hosts: "{{ _mongodb_hosts }}"
     _primary: "{{ mongodb_rs.transformed_output.primary | split(':') | first }}"
   delegate_to: localhost
   delegate_facts: true

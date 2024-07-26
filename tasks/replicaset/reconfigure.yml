@@ -32,7 +32,8 @@
     validate: false
   vars:
     _member_addr: "{{ item | split(':') | first }}"
-    _member_filter: "{{ _revaddrs[_member_addr] }}"
+    _hosts: "{{ _mongodb_hosts }}"
+    _member_filter: "{{ _revaddrs[_member_addr] if _member_addr not in _hosts else _member_addr }}"
     _existing_config: "{{ mongodb_config.transformed_output | list }}"
     _update_member_config: "{{ _existing_config | selectattr('host', 'equalto', item) | list | first }}"
     _update_priority: "{{ hostvars[_member_filter]['_mongodb_priority'] }}"
@@ -86,7 +87,8 @@
         validate: false
       vars:
         _member_addr: "{{ item | split(':') | first }}"
-        _member_filter: "{{ _revaddrs[_member_addr] }}"
+        _hosts: "{{ _mongodb_hosts }}"
+        _member_filter: "{{ _revaddrs[_member_addr] if _member_addr not in _hosts else _member_addr }}"
         _priority: "{{ hostvars[_member_filter]['_mongodb_priority'] }}"
         _votes: "{{ hostvars[_member_filter]['_mongodb_votes'] }}"
         _update_member: "{{ {'host': item, 'hidden': false, 'votes': _votes | int, 'priority': _priority | float} }}"
