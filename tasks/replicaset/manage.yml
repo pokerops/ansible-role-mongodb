@@ -117,6 +117,7 @@
       ansible.builtin.set_fact:
         _mongodb_votes: "{{ mongodb_votes if _has_votes else _default_votes }}"
         _mongodb_priority: "{{ mongodb_priority if _has_priority else _default_priority }}"
+        _mongodb_hosts: "{{ replicaset_members + replicaset_aliens }}"
       vars:
         _default_votes: 1
         _default_priority: 1
@@ -131,7 +132,7 @@
         _split_with: 'nephelaiio.plugins.split_with'
         _select_attrs: 'nephelaiio.plugins.select_attributes'
       vars:
-        _hosts: "{{ replicaset_members + replicaset_aliens }}"
+        _hosts: "{{ _mongodb_hosts }}"
         _host_addrs: "{{ _hosts | map('extract', hostvars, ['ansible_default_ipv4', 'address']) }}"
 
     - name: Initialize MongoDB replicaset
@@ -147,7 +148,7 @@
             members: "{{ _host_members | zip(_votes, _priorities) | map('combine') }}"
             validate: false
           vars:
-            _hosts: "{{ replicaset_members + replicaset_aliens }}"
+            _hosts: "{{ _mongodb_hosts }}"
             _host_members: "[{{ mongodb_replicaset_members | map(_map_format, _host_format) | join(',') }}]"
             _host_format: "{ \"host\": \"%s\" }"
             _priorities: "[{{ _hosts | map('extract', hostvars, ['_mongodb_priority']) | map(_map_format, _priority_format) | join(',') }}]"
@@ -275,7 +276,7 @@
           ansible.builtin.debug:
             msg: "{{ _new_votes }}"
           vars:
-            _hosts: "{{ replicaset_members + replicaset_aliens }}"
+            _hosts: "{{ _mongodb_hosts }}"
             _host_members: "[{{ mongodb_replicaset_members | map(_map_format, _host_format) | join(',') }}]"
             _host_format: "{ \"host\": \"%s\" }"
             _priorities: "[{{ _hosts | map('extract', hostvars, ['_mongodb_priority']) | map(_map_format, _priority_format) | join(',') }}]"
