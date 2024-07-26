@@ -7,3 +7,4 @@ Gemfile.lock
 playbook.retry
 .python-version
 test.yml
+.DS_Store
