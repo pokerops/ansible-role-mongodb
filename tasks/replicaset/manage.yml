@@ -248,8 +248,7 @@
           ansible.builtin.set_fact:
             _mongodb_existing_members: "{{ _voting_filter if _existing_voting | length >= 7 else _non_voting_filter }}"
           vars:
-            _hosts: "[{{ replicaset_members | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | map(_map_format, _hosts_format) | join(',') }}]"
-            _hosts_format: "{{ {\"host\": \"%s:\" + mongodb_port} }}"
+            _hosts: "{{ _existing_members_list | map('nephelaiio.plugins.select_attributes', ['host']) }}"
             _votes_format: "{ \"votes\": %s }"
             _votes: "[{{ replicaset_members | map('extract', hostvars, ['_mongodb_votes']) | map(_map_format, _votes_format) | join(',') }}]"
             _existing_members_list: "{{ mongodb_config.transformed_output }}"
