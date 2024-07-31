@@ -207,48 +207,26 @@
 
         - name: Detect stale cluster hosts
           ansible.builtin.set_fact:
-            _mongodb_delete_members: "{{ _delete_members }}"
+            _mongodb_delete_members: "{{ _delete_members | map(attribute='host') }}"
           vars:
-            _existing_members_list: "{{ mongodb_config.transformed_output | map(attribute='host') }}"
-            _delete_members: "{{ _existing_members_list | reject('in', _target_hostaddrs) }}"
+            _existing_members_list: "{{ mongodb_config.transformed_output }}"
+            _delete_members: "{{ _existing_members_list | rejectattr('host', 'in', _target_hostaddrs) }}"
 
         - name: Debug target members
           ansible.builtin.debug:
-            msg: "Target members are [{{ _members | map(attribute='host') | join(',') }}]"
-          vars:
-            _existing_members_list: "{{ mongodb_config.transformed_output }}"
-            _members: "{{ _existing_members_list | selectattr('host', 'in', _target_hostaddrs) }}"
+            msg: "Target members are [{{ mongodb_replicaset_members | join(',') }}]"
 
         - name: Debug cluster facts
           ansible.builtin.debug:
-            msg: "Detected cluster members [{{ _members | map(attribute='host') | join(',') }}]"
-          vars:
-            _existing_members_list: "{{ mongodb_config.transformed_output }}"
-            _members: "{{ _existing_members_list | selectattr('host', 'in', _target_hostaddrs) }}"
-
-        - name: Compute target members
-          ansible.builtin.include_tasks: "members.yml"
-          vars:
-            _target_members: "{{ _mongodb_add_members }}"
+            msg: "Detected cluster members [{{ _mongodb_target_members | join(',') }}]"
 
         - name: Debug new cluster members
           ansible.builtin.debug:
-            msg: "Adding cluster members [{{ _members | map(attribute='host') | join(',') }}]"
-          vars:
-            _existing_members_list: "{{ mongodb_config.transformed_output }}"
-            _members: "{{ _existing_members_list | selectattr('host', 'in', _target_hostaddrs) }}"
-
-        - name: Compute target members
-          ansible.builtin.include_tasks: "members.yml"
-          vars:
-            _target_members: "{{ _mongodb_delete_members }}"
+            msg: "Adding cluster members [{{ _mongodb_add_members | join(',') }}]"
 
         - name: Debug stale cluster members
           ansible.builtin.debug:
-            msg: "Removing cluster members [{{ _members | map(attribute='host') | join(',') }}]"
-          vars:
-            _existing_members_list: "{{ mongodb_config.transformed_output }}"
-            _members: "{{ _existing_members_list | selectattr('host', 'in', _target_hostaddrs) }}"
+            msg: "Removing cluster members [{{ _mongodb_delete_members | join(',') }}]"
 
         - name: Compute target members
           ansible.builtin.include_tasks: "members.yml"
@@ -259,12 +237,12 @@
           ansible.builtin.set_fact:
             _mongodb_existing_members: "{{ _voting_filter if _existing_voting | length >= 7 else _non_voting_filter }}"
           vars:
-            _members: "{{ _existing_members_list | selectattr('host', 'in', _target_hostaddrs) }}"
-            _votes_format: "{ \"votes\": %s }"
-            _votes: "[{{ replicaset_members | map('extract', hostvars, ['_mongodb_votes']) | map(_map_format, _votes_format) | join(',') }}]"
             _existing_members_list: "{{ mongodb_config.transformed_output }}"
+            _hosts: "{{ _existing_members_list | selectattr('host', 'in', _target_hostaddrs) | map(_select_attrs, ['host']) }}"
+            _votes: "[{{ replicaset_members | map('extract', hostvars, ['_mongodb_votes']) | map(_map_format, _votes_format) | join(',') }}]"
+            _votes_format: "{ \"votes\": %s }"
             _existing_voting: "{{ _existing_members_list | selectattr('votes', 'equalto', 1) }}"
-            _new_members: "{{ _members | zip(_votes) | map('combine') }}"
+            _new_members: "{{ _hosts | zip(_votes) | map('combine') }}"
             _new_voting: "{{ _new_members | selectattr('votes', 'equalto', 1) }}"
             _new_non_voting: "{{ _new_members | difference(_new_voting) }}"
             _voting_filter: "{{ _new_non_voting | zip_longest(_new_voting) | flatten | map(attribute='host') }}"
