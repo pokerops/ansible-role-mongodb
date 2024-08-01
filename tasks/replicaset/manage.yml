@@ -188,16 +188,10 @@
           until: mongodb_config is succeeded
           changed_when: false
 
-        - name: Set MongoDB member facts
-          ansible.builtin.set_fact:
-            _mongodb_target_members: "{{ _target_addrs | map(_map_format, '%s:' + mongodb_port) }}"
-          vars:
-            _target_addrs: "{{ replicaset_members | map('extract', hostvars, ['ansible_default_ipv4', 'address']) }}"
-
         - name: Compute target members
           ansible.builtin.include_tasks: "members.yml"
           vars:
-            _target_members: "{{ _mongodb_target_members }}"
+            _target_members: "{{ mongodb_replicaset_members }}"
 
         - name: Detect new cluster members
           ansible.builtin.set_fact:
@@ -218,7 +212,7 @@
 
         - name: Debug cluster facts
           ansible.builtin.debug:
-            msg: "Detected cluster members [{{ _mongodb_target_members | join(',') }}]"
+            msg: "Detected cluster members [{{ mongodb_replicaset_members | join(',') }}]"
 
         - name: Debug new cluster members
           ansible.builtin.debug:
@@ -228,25 +222,20 @@
           ansible.builtin.debug:
             msg: "Removing cluster members [{{ _mongodb_delete_members | join(',') }}]"
 
-        - name: Compute target members
-          ansible.builtin.include_tasks: "members.yml"
-          vars:
-            _target_members: "{{ mongodb_replicaset_members }}"
-
         - name: Detect new voting and priorities
           ansible.builtin.set_fact:
-            _mongodb_existing_members: "{{ _voting_filter if _existing_voting | length >= 7 else _non_voting_filter }}"
+            _mongodb_existing_members: "{{ _non_voting_filter if _max_voting_count else _voting_filter }}"
           vars:
             _existing_members_list: "{{ mongodb_config.transformed_output }}"
             _hosts: "{{ _existing_members_list | selectattr('host', 'in', _target_hostaddrs) | map(_select_attrs, ['host']) }}"
             _votes: "[{{ replicaset_members | map('extract', hostvars, ['_mongodb_votes']) | map(_map_format, _votes_format) | join(',') }}]"
             _votes_format: "{ \"votes\": %s }"
-            _existing_voting: "{{ _existing_members_list | selectattr('votes', 'equalto', 1) }}"
-            _new_members: "{{ _hosts | zip(_votes) | map('combine') }}"
-            _new_voting: "{{ _new_members | selectattr('votes', 'equalto', 1) }}"
-            _new_non_voting: "{{ _new_members | difference(_new_voting) }}"
-            _voting_filter: "{{ _new_non_voting | zip_longest(_new_voting) | flatten | map(attribute='host') }}"
-            _non_voting_filter: "{{ _new_voting | zip_longest(_new_non_voting) | flatten | map(attribute='host') }}"
+            _max_voting_count: "{{ _existing_members_list | selectattr('votes', 'equalto', 1) | length >= 7 }}"
+            _replica_members: "{{ _hosts | zip(_votes) | map('combine') }}"
+            _voting_members: "{{ _replica_members | selectattr('votes', 'equalto', 1) }}"
+            _non_voting_members: "{{ _replica_members | difference(_voting_members) }}"
+            _non_voting_filter: "{{ _non_voting_members | zip_longest(_voting_members) | flatten | map(attribute='host') }}"
+            _voting_filter: "{{ _voting_members | zip_longest(_non_voting_members) | flatten | map(attribute='host') }}"
 
         - name: Debug existing votes and priorities
           ansible.builtin.debug:
