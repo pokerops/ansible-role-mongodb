@@ -188,45 +188,47 @@
           until: mongodb_config is succeeded
           changed_when: false
 
-        - name: Set MongoDB member facts
-          ansible.builtin.set_fact:
-            _mongodb_target_members: "{{ _target_addrs | map(_map_format, '%s:' + mongodb_port) }}"
+        - name: Compute MongoDB replicaset member facts
+          ansible.builtin.include_tasks: members.yml
           vars:
-            _target_addrs: "{{ replicaset_members | map('extract', hostvars, ['ansible_default_ipv4', 'address']) }}"
+            _existing_members_list: "{{ mongodb_config.transformed_output | map(attribute='host') }}"
+            _target_members: "{{ _existing_members_list }}"
 
         - name: Detect new cluster members
           ansible.builtin.set_fact:
             _mongodb_add_members: "{{ _add_members }}"
           vars:
-            _target_hosts: "{{ _mongodb_target_members | map(_split_with, ':') | map('first') }}"
-            _target_inventory: "{{ _target_hosts | select('in', _fwdaddrs) }}"
-            _target_inventory_addrs: "{{ _target_inventory | map('extract', _fwdaddrs) }}"
-            _target_host_addrs: "{{ _target_hosts | ansible.utils.ipaddr }}"
-            _target_addrs: "{{ _target_inventory_addrs + _target_host_addrs }}"
-            _target_iphosts: "{{ _target_addrs | map(_map_format, '%s:' + mongodb_port) }}"
-            _target_revaddrs: "{{ _target_addrs | select('in', _revaddrs) }}"
-            _target_revnames: "{{ _target_revaddrs | map('extract', _revaddrs) }}"
-            _target_revhosts: "{{ _target_revnames | map(_map_format, '%s:' + mongodb_port) }}"
-            _target_hostaddrs: "{{ _mongodb_target_members + _target_iphosts + _target_revhosts }}"
             _add_members: "{{ mongodb_replicaset_members | reject('in', _target_hostaddrs) }}"
 
-        - name: Detect stale cluster hosts
+        - name: Compute MongoDB replicaset member facts
+          ansible.builtin.include_tasks: members.yml
+          vars:
+            _target_members: "{{ mongodb_replicaset_members }}"
+
+        - name: Detect stale cluster members
           ansible.builtin.set_fact:
             _mongodb_delete_members: "{{ _delete_members }}"
           vars:
             _existing_members_list: "{{ mongodb_config.transformed_output | map(attribute='host') }}"
-            _target_members: "{{ _mongodb_target_members }}"
-            _target_hosts: "{{ _target_members | map(_split_with, ':') | map('first') }}"
-            _target_inventory: "{{ _target_hosts | select('in', _fwdaddrs) }}"
-            _target_inventory_addrs: "{{ _target_inventory | map('extract', _fwdaddrs) }}"
-            _target_host_addrs: "{{ _target_hosts | ansible.utils.ipaddr }}"
-            _target_addrs: "{{ _target_inventory_addrs + _target_host_addrs }}"
-            _target_iphosts: "{{ _target_addrs | map(_map_format, '%s:' + mongodb_port) }}"
-            _target_revaddrs: "{{ _target_addrs | select('in', _revaddrs) }}"
-            _target_revnames: "{{ _target_revaddrs | map('extract', _revaddrs) }}"
-            _target_revhosts: "{{ _target_revnames | map(_map_format, '%s:' + mongodb_port) }}"
-            _target_hostaddrs: "{{ _target_members + _target_iphosts + _target_revhosts }}"
             _delete_members: "{{ _existing_members_list | reject('in', _target_hostaddrs) }}"
+
+        - name: Detect new voting and priorities
+          ansible.builtin.set_fact:
+            _mongodb_existing_members: "{{ _non_voting_filter if _max_voting_count else _voting_filter }}"
+          vars:
+            _existing_members_list: "{{ mongodb_config.transformed_output }}"
+            _member_names: "{{ _existing_members_list | map(attribute='host') }}"
+            _hosts_filter: "{{ mongodb_replicaset_members | select('in', _member_names) }}"
+            _hosts: "[{{ _hosts_filter | map(_map_format, _hosts_format) | join(',') }}]"
+            _hosts_format: "{ \"host\": \"%s\" }"
+            _votes: "[{{ replicaset_members | map('extract', hostvars, ['_mongodb_votes']) | map(_map_format, _votes_format) | join(',') }}]"
+            _votes_format: "{ \"votes\": %s }"
+            _max_voting_count: "{{ _existing_members_list | selectattr('votes', 'equalto', 1) | length >= 7 }}"
+            _replica_members: "{{ _hosts | zip(_votes) | map('combine') }}"
+            _voting_members: "{{ _replica_members | selectattr('votes', 'equalto', 1) }}"
+            _non_voting_members: "{{ _replica_members | difference(_voting_members) }}"
+            _non_voting_filter: "{{ _non_voting_members | zip_longest(_voting_members) | flatten | map(attribute='host') }}"
+            _voting_filter: "{{ _voting_members | zip_longest(_non_voting_members) | flatten | map(attribute='host') }}"
 
         - name: Debug target members
           ansible.builtin.debug:
@@ -234,7 +236,9 @@
 
         - name: Debug cluster facts
           ansible.builtin.debug:
-            msg: "Detected cluster members [{{ _mongodb_target_members | join(',') }}]"
+            msg: "Detected cluster members [{{ _existing_members_list | join(',') }}]"
+          vars:
+            _existing_members_list: "{{ mongodb_config.transformed_output | map(attribute='host') }}"
 
         - name: Debug new cluster members
           ansible.builtin.debug:
@@ -244,40 +248,11 @@
           ansible.builtin.debug:
             msg: "Removing cluster members [{{ _mongodb_delete_members | join(',') }}]"
 
-        - name: Detect new voting and priorities
-          ansible.builtin.set_fact:
-            _mongodb_existing_members: "{{ _voting_filter if _existing_voting | length >= 7 else _non_voting_filter }}"
-          vars:
-            _hosts: "[{{ replicaset_members | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | map(_map_format, _hosts_format) | join(',') }}]"
-            _hosts_format: "{{ {\"host\": \"%s:\" + mongodb_port} }}"
-            _votes_format: "{ \"votes\": %s }"
-            _votes: "[{{ replicaset_members | map('extract', hostvars, ['_mongodb_votes']) | map(_map_format, _votes_format) | join(',') }}]"
-            _existing_members_list: "{{ mongodb_config.transformed_output }}"
-            _existing_voting: "{{ _existing_members_list | selectattr('votes', 'equalto', 1) }}"
-            _new_members: "{{ _hosts | zip(_votes) | map('combine') }}"
-            _new_voting: "{{ _new_members | selectattr('votes', 'equalto', 1) }}"
-            _new_non_voting: "{{ _new_members | difference(_new_voting) }}"
-            _voting_filter: "{{ _new_non_voting | zip_longest(_new_voting) | flatten | map(attribute='host') }}"
-            _non_voting_filter: "{{ _new_voting | zip_longest(_new_non_voting) | flatten | map(attribute='host') }}"
-
         - name: Debug existing votes and priorities
           ansible.builtin.debug:
-            msg: "{{ _existing }}"
+            msg: "{{ _existing_members_list | map(_select_attrs, _attrs) }}"
           vars:
-            _target_members: "{{ mongodb_replicaset_members }}"
-            _target_hosts: "{{ _target_members | map(_split_with, ':') | map('first') }}"
-            _target_inventory: "{{ _target_hosts | select('in', _fwdaddrs) }}"
-            _target_inventory_addrs: "{{ _target_inventory | map('extract', _fwdaddrs) }}"
-            _target_host_addrs: "{{ _target_hosts | ansible.utils.ipaddr }}"
-            _target_addrs: "{{ _target_inventory_addrs + _target_host_addrs }}"
-            _target_iphosts: "{{ _target_addrs | map(_map_format, '%s:' + mongodb_port) }}"
-            _target_revaddrs: "{{ _target_addrs | select('in', _revaddrs) }}"
-            _target_revnames: "{{ _target_revaddrs | map('extract', _revaddrs) }}"
-            _target_revhosts: "{{ _target_revnames | map(_map_format, '%s:' + mongodb_port) }}"
-            _target_hostaddrs: "{{ _target_members + _target_iphosts + _target_revhosts }}"
             _existing_members_list: "{{ mongodb_config.transformed_output }}"
-            _member_votes: "{{ _existing_members_list | selectattr('host', 'in', _target_hostaddrs) }}"
-            _existing: "{{ _member_votes | map(_select_attrs, _attrs) }}"
             _attrs:
               - "host"
               - "votes"
