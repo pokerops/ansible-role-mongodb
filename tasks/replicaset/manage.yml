@@ -188,10 +188,11 @@
           until: mongodb_config is succeeded
           changed_when: false
 
-        - name: Compute target members
-          ansible.builtin.include_tasks: "members.yml"
+        - name: Compute MongoDB replicaset member facts
+          ansible.builtin.include_tasks: members.yml
           vars:
-            _target_members: "{{ mongodb_replicaset_members }}"
+            _existing_members_list: "{{ mongodb_config.transformed_output | map(attribute='host') }}"
+            _target_members: "{{ _existing_members_list }}"
 
         - name: Detect new cluster members
           ansible.builtin.set_fact:
@@ -199,35 +200,27 @@
           vars:
             _add_members: "{{ mongodb_replicaset_members | reject('in', _target_hostaddrs) }}"
 
-        - name: Detect stale cluster hosts
-          ansible.builtin.set_fact:
-            _mongodb_delete_members: "{{ _delete_members | map(attribute='host') }}"
+        - name: Compute MongoDB replicaset member facts
+          ansible.builtin.include_tasks: members.yml
           vars:
-            _existing_members_list: "{{ mongodb_config.transformed_output }}"
-            _delete_members: "{{ _existing_members_list | rejectattr('host', 'in', _target_hostaddrs) }}"
+            _target_members: "{{ mongodb_replicaset_members }}"
 
-        - name: Debug target members
-          ansible.builtin.debug:
-            msg: "Target members are [{{ mongodb_replicaset_members | join(',') }}]"
-
-        - name: Debug cluster facts
-          ansible.builtin.debug:
-            msg: "Detected cluster members [{{ mongodb_replicaset_members | join(',') }}]"
-
-        - name: Debug new cluster members
-          ansible.builtin.debug:
-            msg: "Adding cluster members [{{ _mongodb_add_members | join(',') }}]"
-
-        - name: Debug stale cluster members
-          ansible.builtin.debug:
-            msg: "Removing cluster members [{{ _mongodb_delete_members | join(',') }}]"
+        - name: Detect stale cluster members
+          ansible.builtin.set_fact:
+            _mongodb_delete_members: "{{ _delete_members }}"
+          vars:
+            _existing_members_list: "{{ mongodb_config.transformed_output | map(attribute='host') }}"
+            _delete_members: "{{ _existing_members_list | reject('in', _target_hostaddrs) }}"
 
         - name: Detect new voting and priorities
           ansible.builtin.set_fact:
             _mongodb_existing_members: "{{ _non_voting_filter if _max_voting_count else _voting_filter }}"
           vars:
             _existing_members_list: "{{ mongodb_config.transformed_output }}"
-            _hosts: "{{ _existing_members_list | selectattr('host', 'in', _target_hostaddrs) | map(_select_attrs, ['host']) }}"
+            _member_names: "{{ _existing_members_list | map(attribute='host') }}"
+            _hosts_filter: "{{ mongodb_replicaset_members | select('in', _member_names) }}"
+            _hosts: "[{{ _hosts_filter | map(_map_format, _hosts_format) | join(',') }}]"
+            _hosts_format: "{ \"host\": \"%s\" }"
             _votes: "[{{ replicaset_members | map('extract', hostvars, ['_mongodb_votes']) | map(_map_format, _votes_format) | join(',') }}]"
             _votes_format: "{ \"votes\": %s }"
             _max_voting_count: "{{ _existing_members_list | selectattr('votes', 'equalto', 1) | length >= 7 }}"
@@ -237,13 +230,29 @@
             _non_voting_filter: "{{ _non_voting_members | zip_longest(_voting_members) | flatten | map(attribute='host') }}"
             _voting_filter: "{{ _voting_members | zip_longest(_non_voting_members) | flatten | map(attribute='host') }}"
 
+        - name: Debug target members
+          ansible.builtin.debug:
+            msg: "Target members are [{{ mongodb_replicaset_members | join(',') }}]"
+
+        - name: Debug cluster facts
+          ansible.builtin.debug:
+            msg: "Detected cluster members [{{ _existing_members_list | join(',') }}]"
+          vars:
+            _existing_members_list: "{{ mongodb_config.transformed_output | map(attribute='host') }}"
+
+        - name: Debug new cluster members
+          ansible.builtin.debug:
+            msg: "Adding cluster members [{{ _mongodb_add_members | join(',') }}]"
+
+        - name: Debug stale cluster members
+          ansible.builtin.debug:
+            msg: "Removing cluster members [{{ _mongodb_delete_members | join(',') }}]"
+
         - name: Debug existing votes and priorities
           ansible.builtin.debug:
-            msg: "{{ _existing }}"
+            msg: "{{ _existing_members_list | map(_select_attrs, _attrs) }}"
           vars:
             _existing_members_list: "{{ mongodb_config.transformed_output }}"
-            _member_votes: "{{ _existing_members_list | selectattr('host', 'in', _target_hostaddrs) }}"
-            _existing: "{{ _member_votes | map(_select_attrs, _attrs) }}"
             _attrs:
               - "host"
               - "votes"

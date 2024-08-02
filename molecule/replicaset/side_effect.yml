@@ -54,12 +54,14 @@
                 _addr_attrs: ['ansible_default_ipv4', 'address']
                 _addresses: "{{ _hosts3 | map('extract', hostvars, _addr_attrs) }}"
                 _members: "{{ _addresses | list }}"
+              delegate_to: localhost
+              delegate_facts: true
 
             - name: Configure cluster members
               ansible.builtin.include_role:
                 name: pokerops.mongodb
               vars:
-                mongodb_replicaset_members: "{{ _config_members }}"
+                mongodb_replicaset_members: "{{ hostvars['localhost']['_config_members'] }}"
                 mongodb_votes_group: "_replicaset_votes_up_three"
                 mongodb_non_votes_group: "_replicaset_non_votes_up_three"
                 mongodb_voting_group: "_replicaset_voting_up_three"
@@ -83,14 +85,23 @@
             - name: Set replicaset member facts
               ansible.builtin.set_fact:
                 _existing_members: "{{ _query_members.transformed_output | map(attribute='name') }}"
+              delegate_to: localhost
+              delegate_facts: true
 
-            - name: Debug replicaset members
+            - name: Debug replicaset config members
               ansible.builtin.debug:
-                var: _existing_members
+                msg: "{{ hostvars['localhost']['_config_members'] }}"
 
-            - name: Check cluster members
-              ansible.builtin.assert:
-                that: _config_members | difference(_existing_members) | length == 0
+            - name: Debug replicaset existing members
+              ansible.builtin.debug:
+                msg: "{{ hostvars['localhost']['_existing_members'] }}"
+
+        - name: Check cluster members
+          ansible.builtin.assert:
+            that: _config_list | symmetric_difference(_existing_list) | length == 0
+          vars:
+            _config_list: "{{ hostvars['localhost']['_config_members'] }}"
+            _existing_list: "{{ hostvars['localhost']['_existing_members'] }}"
 
         - name: Attempt 2 node cluster scale down
           when: inventory_hostname in _hosts2
@@ -138,12 +149,14 @@
                 _addr_attrs: ['ansible_default_ipv4', 'address']
                 _addresses: "{{ _hosts5 | map('extract', hostvars, _addr_attrs) }}"
                 _members: "{{ _addresses | list }}"
+              delegate_to: localhost
+              delegate_facts: true
 
             - name: Configure cluster members
               ansible.builtin.include_role:
                 name: pokerops.mongodb
               vars:
-                mongodb_replicaset_members: "{{ _config_members }}"
+                mongodb_replicaset_members: "{{ hostvars['localhost']['_config_members'] }}"
                 mongodb_votes_group: "_replicaset_votes_up_five"
                 mongodb_non_votes_group: "_replicaset_non_votes_up_five"
                 mongodb_voting_group: "_replicaset_voting_up_five"
@@ -167,14 +180,23 @@
             - name: Set replicaset member facts
               ansible.builtin.set_fact:
                 _existing_members: "{{ _query_members.transformed_output | map(attribute='name') }}"
+              delegate_to: localhost
+              delegate_facts: true
 
-            - name: Debug replicaset members
+            - name: Debug replicaset config members
               ansible.builtin.debug:
-                var: _existing_members
+                msg: "{{ hostvars['localhost']['_config_members'] }}"
 
-            - name: Check cluster members
-              ansible.builtin.assert:
-                that: _config_members | difference(_existing_members) | length == 0
+            - name: Debug replicaset existing members
+              ansible.builtin.debug:
+                msg: "{{ hostvars['localhost']['_existing_members'] }}"
+
+        - name: Check cluster members
+          ansible.builtin.assert:
+            that: _config_list | symmetric_difference(_existing_list) | length == 0
+          vars:
+            _config_list: "{{ hostvars['localhost']['_config_members'] }}"
+            _existing_list: "{{ hostvars['localhost']['_existing_members'] }}"
 
         - name: Attempt 4 node cluster scale down
           when: inventory_hostname in _hosts4
@@ -210,12 +232,14 @@
                 _addr_attrs: ['ansible_default_ipv4', 'address']
                 _addresses: "{{ _hosts7 | map('extract', hostvars, _addr_attrs) }}"
                 _members: "{{ _addresses | list }}"
+              delegate_to: localhost
+              delegate_facts: true
 
             - name: Configure cluster members
               ansible.builtin.include_role:
                 name: pokerops.mongodb
               vars:
-                mongodb_replicaset_members: "{{ _config_members }}"
+                mongodb_replicaset_members: "{{ hostvars['localhost']['_config_members'] }}"
                 mongodb_votes_group: "_replicaset_votes_up_seven"
                 mongodb_non_votes_group: "_replicaset_non_votes_up_seven"
                 mongodb_voting_group: "_replicaset_voting_up_seven"
@@ -239,14 +263,23 @@
             - name: Set replicaset member facts
               ansible.builtin.set_fact:
                 _existing_members: "{{ _query_members.transformed_output | map(attribute='name') }}"
+              delegate_to: localhost
+              delegate_facts: true
 
-            - name: Debug replicaset members
+            - name: Debug replicaset config members
               ansible.builtin.debug:
-                var: _existing_members
+                msg: "{{ hostvars['localhost']['_config_members'] }}"
 
-            - name: Check cluster members
-              ansible.builtin.assert:
-                that: _config_members | difference(_existing_members) | length == 0
+            - name: Debug replicaset existing members
+              ansible.builtin.debug:
+                msg: "{{ hostvars['localhost']['_existing_members'] }}"
+
+        - name: Check cluster members
+          ansible.builtin.assert:
+            that: _config_list | symmetric_difference(_existing_list) | length == 0
+          vars:
+            _config_list: "{{ hostvars['localhost']['_config_members'] }}"
+            _existing_list: "{{ hostvars['localhost']['_existing_members'] }}"
 
         - name: Attempt 6 node cluster scale down
           when: inventory_hostname in _hosts6
@@ -282,12 +315,14 @@
                 _addr_attrs: ['ansible_default_ipv4', 'address']
                 _addresses: "{{ _hosts5 | map('extract', hostvars, _addr_attrs) }}"
                 _members: "{{ _addresses | list }}"
+              delegate_to: localhost
+              delegate_facts: true
 
             - name: Configure cluster members
               ansible.builtin.include_role:
                 name: pokerops.mongodb
               vars:
-                mongodb_replicaset_members: "{{ _config_members }}"
+                mongodb_replicaset_members: "{{ hostvars['localhost']['_config_members'] }}"
                 mongodb_votes_group: "_replicaset_votes_down_five"
                 mongodb_non_votes_group: "_replicaset_non_votes_down_five"
                 mongodb_voting_group: "_replicaset_voting_down_five"
@@ -311,14 +346,23 @@
             - name: Set replicaset member facts
               ansible.builtin.set_fact:
                 _existing_members: "{{ _query_members.transformed_output | map(attribute='name') }}"
+              delegate_to: localhost
+              delegate_facts: true
 
-            - name: Debug replicaset members
+            - name: Debug replicaset config members
               ansible.builtin.debug:
-                var: _existing_members
+                msg: "{{ hostvars['localhost']['_config_members'] }}"
 
-            - name: Check cluster members
-              ansible.builtin.assert:
-                that: _config_members | difference(_existing_members) | length == 0
+            - name: Debug replicaset existing members
+              ansible.builtin.debug:
+                msg: "{{ hostvars['localhost']['_existing_members'] }}"
+
+        - name: Check cluster members
+          ansible.builtin.assert:
+            that: _config_list | symmetric_difference(_existing_list) | length == 0
+          vars:
+            _config_list: "{{ hostvars['localhost']['_config_members'] }}"
+            _existing_list: "{{ hostvars['localhost']['_existing_members'] }}"
 
         - name: Scale down to 3 node cluster
           when: inventory_hostname in _hosts3
@@ -332,12 +376,14 @@
                 _addr_attrs: ['ansible_default_ipv4', 'address']
                 _addresses: "{{ _hosts3 | map('extract', hostvars, _addr_attrs) }}"
                 _members: "{{ _addresses | list }}"
+              delegate_to: localhost
+              delegate_facts: true
 
             - name: Configure cluster members
               ansible.builtin.include_role:
                 name: pokerops.mongodb
               vars:
-                mongodb_replicaset_members: "{{ _config_members }}"
+                mongodb_replicaset_members: "{{ hostvars['localhost']['_config_members'] }}"
                 mongodb_votes_group: "_replicaset_votes_down_three"
                 mongodb_non_votes_group: "_replicaset_non_votes_down_three"
                 mongodb_voting_group: "_replicaset_voting_down_three"
@@ -361,14 +407,23 @@
             - name: Set replicaset member facts
               ansible.builtin.set_fact:
                 _existing_members: "{{ _query_members.transformed_output | map(attribute='name') }}"
+              delegate_to: localhost
+              delegate_facts: true
 
-            - name: Debug replicaset members
+            - name: Debug replicaset config members
               ansible.builtin.debug:
-                var: _existing_members
+                msg: "{{ hostvars['localhost']['_config_members'] }}"
 
-            - name: Check cluster members
-              ansible.builtin.assert:
-                that: _config_members | difference(_existing_members) | length == 0
+            - name: Debug replicaset existing members
+              ansible.builtin.debug:
+                msg: "{{ hostvars['localhost']['_existing_members'] }}"
+
+        - name: Check cluster members
+          ansible.builtin.assert:
+            that: _config_list | symmetric_difference(_existing_list) | length == 0
+          vars:
+            _config_list: "{{ hostvars['localhost']['_config_members'] }}"
+            _existing_list: "{{ hostvars['localhost']['_existing_members'] }}"
 
         - name: Attempt 1 node cluster scale down
           when: inventory_hostname in _hosts1
