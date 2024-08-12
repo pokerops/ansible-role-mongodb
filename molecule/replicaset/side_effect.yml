@@ -5,9 +5,9 @@
     _hosts1: "{{ play_hosts[:1] }}"
     _hosts2: "{{ play_hosts[:2] }}"
     _hosts3: "{{ play_hosts[-3:] }}"
-    _hosts4: "{{ play_hosts[:4] }}"
+    _hosts4: "{{ play_hosts[:1] + play_hosts[-3:] }}"
     _hosts5: "{{ play_hosts[:2] + play_hosts[-3:] }}"
-    _hosts6: "{{ play_hosts[:6] }}"
+    _hosts6: "{{ play_hosts[:3] + play_hosts[-3:] }}"
     _hosts7: "{{ play_hosts[:7] }}"
   tasks:
     - name: Manage python interpreter
@@ -471,7 +471,7 @@
         - name: Attempt 2 node cluster scale in
           when: inventory_hostname in _hosts2
           block:
-            - name: Scale in to 2 node cluster
+            - name: Attempt 2 node cluster scale in
               ansible.builtin.include_role:
                 name: pokerops.mongodb
               vars:
