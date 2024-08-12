@@ -5,9 +5,9 @@
     _hosts1: "{{ play_hosts[:1] }}"
     _hosts2: "{{ play_hosts[:2] }}"
     _hosts3: "{{ play_hosts[-3:] }}"
-    _hosts4: "{{ play_hosts[:4] }}"
+    _hosts4: "{{ play_hosts[:1] + play_hosts[-3:] }}"
     _hosts5: "{{ play_hosts[:2] + play_hosts[-3:] }}"
-    _hosts6: "{{ play_hosts[:6] }}"
+    _hosts6: "{{ play_hosts[:3] + play_hosts[-3:] }}"
     _hosts7: "{{ play_hosts[:7] }}"
   tasks:
     - name: Manage python interpreter
@@ -62,18 +62,18 @@
                 name: pokerops.mongodb
               vars:
                 mongodb_replicaset_members: "{{ hostvars['localhost']['_config_members'] }}"
-                mongodb_votes_group: "_replicaset_votes_up_three"
-                mongodb_non_votes_group: "_replicaset_non_votes_up_three"
-                mongodb_voting_group: "_replicaset_voting_up_three"
-                mongodb_priority_group: "_replicaset_priority_up_three"
-                mongodb_non_priority_group: "_replicaset_non_priority_up_three"
-                mongodb_compliant_group: "_replicaset_compliant_up_three"
-                mongodb_non_compliant_group: "_replicaset_non_compliant_up_three"
-                mongodb_non_voting_group: "_replicaset_non_voting_up_three"
-                mongodb_alien_group: "_replicaset_alien_up_three"
-                mongodb_non_alien_group: "_replicaset_non_alien_up_three"
-                mongodb_member_group: "_replicaset_member_up_three"
-                mongodb_failed_group: "_replicaset_failed_up_three"
+                mongodb_votes_group: "_replicaset_votes_out_three"
+                mongodb_non_votes_group: "_replicaset_non_votes_out_three"
+                mongodb_voting_group: "_replicaset_voting_out_three"
+                mongodb_priority_group: "_replicaset_priority_out_three"
+                mongodb_non_priority_group: "_replicaset_non_priority_out_three"
+                mongodb_compliant_group: "_replicaset_compliant_out_three"
+                mongodb_non_compliant_group: "_replicaset_non_compliant_out_three"
+                mongodb_non_voting_group: "_replicaset_non_voting_out_three"
+                mongodb_alien_group: "_replicaset_alien_out_three"
+                mongodb_non_alien_group: "_replicaset_non_alien_out_three"
+                mongodb_member_group: "_replicaset_member_out_three"
+                mongodb_failed_group: "_replicaset_failed_out_three"
 
             - name: Query existing MongoDB replicaset members
               community.mongodb.mongodb_shell:
@@ -103,44 +103,71 @@
             _config_list: "{{ hostvars['localhost']['_config_members'] }}"
             _existing_list: "{{ hostvars['localhost']['_existing_members'] }}"
 
-        - name: Attempt 2 node cluster scale down
-          when: inventory_hostname in _hosts2
+        - name: Scale out to 4 node cluster
+          when: inventory_hostname in _hosts4
           block:
-            - name: Scale down to 2 node cluster
+            - name: Scale out to 4 node cluster
+              ansible.builtin.set_fact:
+                _config_members: "{{ _members | map(_map_format, '%s:' + _port) | list }}"
+              vars:
+                _port: "{{ mongodb_port | default('27017') }}"
+                _map_format: 'nephelaiio.plugins.map_format'
+                _addr_attrs: ['ansible_default_ipv4', 'address']
+                _addresses: "{{ _hosts4 | map('extract', hostvars, _addr_attrs) }}"
+                _members: "{{ _addresses | list }}"
+              delegate_to: localhost
+              delegate_facts: true
+
+            - name: Configure cluster members
               ansible.builtin.include_role:
                 name: pokerops.mongodb
               vars:
-                _map_format: 'nephelaiio.plugins.map_format'
-                _addr_attrs: ['ansible_default_ipv4', 'address']
-                _addresses: "{{ _hosts2 | map('extract', hostvars, _addr_attrs) }}"
-                _members: "{{ _addresses | list }}"
-                mongodb_replicaset_members: "{{ _members | map(_map_format, '%s:' + mongodb_port) | list }}"
-                mongodb_votes_group: "_replicaset_votes_up_two"
-                mongodb_non_votes_group: "_replicaset_non_votes_up_two"
-                mongodb_voting_group: "_replicaset_voting_up_two"
-                mongodb_priority_group: "_replicaset_priority_up_two"
-                mongodb_non_priority_group: "_replicaset_non_priority_up_two"
-                mongodb_compliant_group: "_replicaset_compliant_up_two"
-                mongodb_non_compliant_group: "_replicaset_non_compliant_up_two"
-                mongodb_non_voting_group: "_replicaset_non_voting_up_two"
-                mongodb_alien_group: "_replicaset_alien_up_two"
-                mongodb_non_alien_group: "_replicaset_non_alien_up_two"
-                mongodb_member_group: "_replicaset_member_up_two"
-                mongodb_failed_group: "_replicaset_failed_up_two"
-          rescue:
-            - name: Set result facts
-              ansible.builtin.set_fact:
-                _reconfigure2_failed: true
-          always:
-            - name: Fail on broken replicaset member configuration
-              ansible.builtin.assert:
-                that: _reconfigure2_failed
-                fail_msg: "broken replicaset member configuration operation must fail"
+                mongodb_replicaset_members: "{{ hostvars['localhost']['_config_members'] }}"
+                mongodb_votes_group: "_replicaset_votes_out_four"
+                mongodb_non_votes_group: "_replicaset_non_votes_out_four"
+                mongodb_voting_group: "_replicaset_voting_out_four"
+                mongodb_priority_group: "_replicaset_priority_out_four"
+                mongodb_non_priority_group: "_replicaset_non_priority_out_four"
+                mongodb_compliant_group: "_replicaset_compliant_out_four"
+                mongodb_non_compliant_group: "_replicaset_non_compliant_out_four"
+                mongodb_non_voting_group: "_replicaset_non_voting_out_four"
+                mongodb_alien_group: "_replicaset_alien_out_four"
+                mongodb_non_alien_group: "_replicaset_non_alien_out_four"
+                mongodb_member_group: "_replicaset_member_out_four"
+                mongodb_failed_group: "_replicaset_failed_out_four"
 
-        - name: Scale up to 5 node cluster
+            - name: Query existing MongoDB replicaset members
+              community.mongodb.mongodb_shell:
+                eval: "rs.status().members"
+                mongo_cmd: "{{ mongodb_shell | default(omit) }}"
+              register: _query_members
+              changed_when: false
+
+            - name: Set replicaset member facts
+              ansible.builtin.set_fact:
+                _existing_members: "{{ _query_members.transformed_output | map(attribute='name') }}"
+              delegate_to: localhost
+              delegate_facts: true
+
+            - name: Debug replicaset config members
+              ansible.builtin.debug:
+                msg: "{{ hostvars['localhost']['_config_members'] }}"
+
+            - name: Debug replicaset existing members
+              ansible.builtin.debug:
+                msg: "{{ hostvars['localhost']['_existing_members'] }}"
+
+        - name: Check cluster members
+          ansible.builtin.assert:
+            that: _config_list | symmetric_difference(_existing_list) | length == 0
+          vars:
+            _config_list: "{{ hostvars['localhost']['_config_members'] }}"
+            _existing_list: "{{ hostvars['localhost']['_existing_members'] }}"
+
+        - name: Scale out to 5 node cluster
           when: inventory_hostname in _hosts5
           block:
-            - name: Scale up to 5 node cluster
+            - name: Scale out to 5 node cluster
               ansible.builtin.set_fact:
                 _config_members: "{{ _members | map(_map_format, '%s:' + _port) | list }}"
               vars:
@@ -157,18 +184,18 @@
                 name: pokerops.mongodb
               vars:
                 mongodb_replicaset_members: "{{ hostvars['localhost']['_config_members'] }}"
-                mongodb_votes_group: "_replicaset_votes_up_five"
-                mongodb_non_votes_group: "_replicaset_non_votes_up_five"
-                mongodb_voting_group: "_replicaset_voting_up_five"
-                mongodb_priority_group: "_replicaset_priority_up_five"
-                mongodb_non_priority_group: "_replicaset_non_priority_up_five"
-                mongodb_compliant_group: "_replicaset_compliant_up_five"
-                mongodb_non_compliant_group: "_replicaset_non_compliant_up_five"
-                mongodb_non_voting_group: "_replicaset_non_voting_up_five"
-                mongodb_alien_group: "_replicaset_alien_up_five"
-                mongodb_non_alien_group: "_replicaset_non_alien_up_five"
-                mongodb_member_group: "_replicaset_member_up_five"
-                mongodb_failed_group: "_replicaset_failed_up_five"
+                mongodb_votes_group: "_replicaset_votes_out_five"
+                mongodb_non_votes_group: "_replicaset_non_votes_out_five"
+                mongodb_voting_group: "_replicaset_voting_out_five"
+                mongodb_priority_group: "_replicaset_priority_out_five"
+                mongodb_non_priority_group: "_replicaset_non_priority_out_five"
+                mongodb_compliant_group: "_replicaset_compliant_out_five"
+                mongodb_non_compliant_group: "_replicaset_non_compliant_out_five"
+                mongodb_non_voting_group: "_replicaset_non_voting_out_five"
+                mongodb_alien_group: "_replicaset_alien_out_five"
+                mongodb_non_alien_group: "_replicaset_non_alien_out_five"
+                mongodb_member_group: "_replicaset_member_out_five"
+                mongodb_failed_group: "_replicaset_failed_out_five"
 
             - name: Query existing MongoDB replicaset members
               community.mongodb.mongodb_shell:
@@ -198,32 +225,10 @@
             _config_list: "{{ hostvars['localhost']['_config_members'] }}"
             _existing_list: "{{ hostvars['localhost']['_existing_members'] }}"
 
-        - name: Attempt 4 node cluster scale down
-          when: inventory_hostname in _hosts4
-          block:
-            - name: Scale down to 4 node cluster
-              ansible.builtin.include_role:
-                name: pokerops.mongodb
-              vars:
-                _map_format: 'nephelaiio.plugins.map_format'
-                _addr_attrs: ['ansible_default_ipv4', 'address']
-                _addresses: "{{ _hosts4 | map('extract', hostvars, _addr_attrs) }}"
-                _members: "{{ _addresses | list }}"
-                mongodb_replicaset_members: "{{ _members | map(_map_format, '%s:' + mongodb_port) | list }}"
-          rescue:
-            - name: Set result facts
-              ansible.builtin.set_fact:
-                _reconfigure4_failed: true
-          always:
-            - name: Fail on broken replicaset member configuration
-              ansible.builtin.assert:
-                that: _reconfigure4_failed
-                fail_msg: "broken replicaset member configuration operation must fail"
-
-        - name: Scale up to 7 node cluster
+        - name: Scale out to 7 node cluster
           when: inventory_hostname in _hosts7
           block:
-            - name: Scale up to 7 node cluster
+            - name: Scale out to 7 node cluster
               ansible.builtin.set_fact:
                 _config_members: "{{ _members | map(_map_format, '%s:' + _port) | list }}"
               vars:
@@ -240,18 +245,18 @@
                 name: pokerops.mongodb
               vars:
                 mongodb_replicaset_members: "{{ hostvars['localhost']['_config_members'] }}"
-                mongodb_votes_group: "_replicaset_votes_up_seven"
-                mongodb_non_votes_group: "_replicaset_non_votes_up_seven"
-                mongodb_voting_group: "_replicaset_voting_up_seven"
-                mongodb_priority_group: "_replicaset_priority_up_seven"
-                mongodb_non_priority_group: "_replicaset_non_priority_up_seven"
-                mongodb_compliant_group: "_replicaset_compliant_up_seven"
-                mongodb_non_compliant_group: "_replicaset_non_compliant_up_seven"
-                mongodb_non_voting_group: "_replicaset_non_voting_up_seven"
-                mongodb_alien_group: "_replicaset_alien_up_seven"
-                mongodb_non_alien_group: "_replicaset_non_alien_up_seven"
-                mongodb_member_group: "_replicaset_member_up_seven"
-                mongodb_failed_group: "_replicaset_failed_up_seven"
+                mongodb_votes_group: "_replicaset_votes_out_seven"
+                mongodb_non_votes_group: "_replicaset_non_votes_out_seven"
+                mongodb_voting_group: "_replicaset_voting_out_seven"
+                mongodb_priority_group: "_replicaset_priority_out_seven"
+                mongodb_non_priority_group: "_replicaset_non_priority_out_seven"
+                mongodb_compliant_group: "_replicaset_compliant_out_seven"
+                mongodb_non_compliant_group: "_replicaset_non_compliant_out_seven"
+                mongodb_non_voting_group: "_replicaset_non_voting_out_seven"
+                mongodb_alien_group: "_replicaset_alien_out_seven"
+                mongodb_non_alien_group: "_replicaset_non_alien_out_seven"
+                mongodb_member_group: "_replicaset_member_out_seven"
+                mongodb_failed_group: "_replicaset_failed_out_seven"
 
             - name: Query existing MongoDB replicaset members
               community.mongodb.mongodb_shell:
@@ -281,32 +286,71 @@
             _config_list: "{{ hostvars['localhost']['_config_members'] }}"
             _existing_list: "{{ hostvars['localhost']['_existing_members'] }}"
 
-        - name: Attempt 6 node cluster scale down
+        - name: Scale in to 6 node cluster
           when: inventory_hostname in _hosts6
           block:
-            - name: Scale down to 6 node cluster
-              ansible.builtin.include_role:
-                name: pokerops.mongodb
+            - name: Scale in to 6 node cluster
+              ansible.builtin.set_fact:
+                _config_members: "{{ _members | map(_map_format, '%s:' + _port) | list }}"
               vars:
+                _port: "{{ mongodb_port | default('27017') }}"
                 _map_format: 'nephelaiio.plugins.map_format'
                 _addr_attrs: ['ansible_default_ipv4', 'address']
                 _addresses: "{{ _hosts6 | map('extract', hostvars, _addr_attrs) }}"
                 _members: "{{ _addresses | list }}"
-                mongodb_replicaset_members: "{{ _members | map(_map_format, '%s:' + mongodb_port) | list }}"
-          rescue:
-            - name: Set result facts
-              ansible.builtin.set_fact:
-                _reconfigure6_failed: true
-          always:
-            - name: Fail on broken replicaset member configuration
-              ansible.builtin.assert:
-                that: _reconfigure6_failed
-                fail_msg: "broken replicaset member configuration operation must fail"
+              delegate_to: localhost
+              delegate_facts: true
 
-        - name: Scale down to 5 node cluster
+            - name: Configure cluster members
+              ansible.builtin.include_role:
+                name: pokerops.mongodb
+              vars:
+                mongodb_replicaset_members: "{{ hostvars['localhost']['_config_members'] }}"
+                mongodb_votes_group: "_replicaset_votes_in_six"
+                mongodb_non_votes_group: "_replicaset_non_votes_in_six"
+                mongodb_voting_group: "_replicaset_voting_in_six"
+                mongodb_priority_group: "_replicaset_priority_in_six"
+                mongodb_non_priority_group: "_replicaset_non_priority_in_six"
+                mongodb_compliant_group: "_replicaset_compliant_in_six"
+                mongodb_non_compliant_group: "_replicaset_non_compliant_in_six"
+                mongodb_non_voting_group: "_replicaset_non_voting_in_six"
+                mongodb_alien_group: "_replicaset_alien_in_six"
+                mongodb_non_alien_group: "_replicaset_non_alien_in_six"
+                mongodb_member_group: "_replicaset_member_in_six"
+                mongodb_failed_group: "_replicaset_failed_in_six"
+
+            - name: Query existing MongoDB replicaset members
+              community.mongodb.mongodb_shell:
+                eval: "rs.status().members"
+                mongo_cmd: "{{ mongodb_shell | default(omit) }}"
+              register: _query_members
+              changed_when: false
+
+            - name: Set replicaset member facts
+              ansible.builtin.set_fact:
+                _existing_members: "{{ _query_members.transformed_output | map(attribute='name') }}"
+              delegate_to: localhost
+              delegate_facts: true
+
+            - name: Debug replicaset config members
+              ansible.builtin.debug:
+                msg: "{{ hostvars['localhost']['_config_members'] }}"
+
+            - name: Debug replicaset existing members
+              ansible.builtin.debug:
+                msg: "{{ hostvars['localhost']['_existing_members'] }}"
+
+        - name: Check cluster members
+          ansible.builtin.assert:
+            that: _config_list | symmetric_difference(_existing_list) | length == 0
+          vars:
+            _config_list: "{{ hostvars['localhost']['_config_members'] }}"
+            _existing_list: "{{ hostvars['localhost']['_existing_members'] }}"
+
+        - name: Scale in to 5 node cluster
           when: inventory_hostname in _hosts5
           block:
-            - name: Scale down to 5 node cluster
+            - name: Scale in to 5 node cluster
               ansible.builtin.set_fact:
                 _config_members: "{{ _members | map(_map_format, '%s:' + _port) | list }}"
               vars:
@@ -323,18 +367,18 @@
                 name: pokerops.mongodb
               vars:
                 mongodb_replicaset_members: "{{ hostvars['localhost']['_config_members'] }}"
-                mongodb_votes_group: "_replicaset_votes_down_five"
-                mongodb_non_votes_group: "_replicaset_non_votes_down_five"
-                mongodb_voting_group: "_replicaset_voting_down_five"
-                mongodb_priority_group: "_replicaset_priority_down_five"
-                mongodb_non_priority_group: "_replicaset_non_priority_down_five"
-                mongodb_compliant_group: "_replicaset_compliant_down_five"
-                mongodb_non_compliant_group: "_replicaset_non_compliant_down_five"
-                mongodb_non_voting_group: "_replicaset_non_voting_down_five"
-                mongodb_alien_group: "_replicaset_alien_down_five"
-                mongodb_non_alien_group: "_replicaset_non_alien_down_five"
-                mongodb_member_group: "_replicaset_member_down_five"
-                mongodb_failed_group: "_replicaset_failed_down_five"
+                mongodb_votes_group: "_replicaset_votes_in_five"
+                mongodb_non_votes_group: "_replicaset_non_votes_in_five"
+                mongodb_voting_group: "_replicaset_voting_in_five"
+                mongodb_priority_group: "_replicaset_priority_in_five"
+                mongodb_non_priority_group: "_replicaset_non_priority_in_five"
+                mongodb_compliant_group: "_replicaset_compliant_in_five"
+                mongodb_non_compliant_group: "_replicaset_non_compliant_in_five"
+                mongodb_non_voting_group: "_replicaset_non_voting_in_five"
+                mongodb_alien_group: "_replicaset_alien_in_five"
+                mongodb_non_alien_group: "_replicaset_non_alien_in_five"
+                mongodb_member_group: "_replicaset_member_in_five"
+                mongodb_failed_group: "_replicaset_failed_in_five"
 
             - name: Query existing MongoDB replicaset members
               community.mongodb.mongodb_shell:
@@ -364,10 +408,10 @@
             _config_list: "{{ hostvars['localhost']['_config_members'] }}"
             _existing_list: "{{ hostvars['localhost']['_existing_members'] }}"
 
-        - name: Scale down to 3 node cluster
+        - name: Scale in to 3 node cluster
           when: inventory_hostname in _hosts3
           block:
-            - name: Scale down to 3 node cluster
+            - name: Scale in to 3 node cluster
               ansible.builtin.set_fact:
                 _config_members: "{{ _members | map(_map_format, '%s:' + _port) | list }}"
               vars:
@@ -384,18 +428,18 @@
                 name: pokerops.mongodb
               vars:
                 mongodb_replicaset_members: "{{ hostvars['localhost']['_config_members'] }}"
-                mongodb_votes_group: "_replicaset_votes_down_three"
-                mongodb_non_votes_group: "_replicaset_non_votes_down_three"
-                mongodb_voting_group: "_replicaset_voting_down_three"
-                mongodb_priority_group: "_replicaset_priority_down_three"
-                mongodb_non_priority_group: "_replicaset_non_priority_down_three"
-                mongodb_compliant_group: "_replicaset_compliant_down_three"
-                mongodb_non_compliant_group: "_replicaset_non_compliant_down_three"
-                mongodb_non_voting_group: "_replicaset_non_voting_down_three"
-                mongodb_alien_group: "_replicaset_alien_down_three"
-                mongodb_non_alien_group: "_replicaset_non_alien_down_three"
-                mongodb_member_group: "_replicaset_member_down_three"
-                mongodb_failed_group: "_replicaset_failed_down_three"
+                mongodb_votes_group: "_replicaset_votes_in_three"
+                mongodb_non_votes_group: "_replicaset_non_votes_in_three"
+                mongodb_voting_group: "_replicaset_voting_in_three"
+                mongodb_priority_group: "_replicaset_priority_in_three"
+                mongodb_non_priority_group: "_replicaset_non_priority_in_three"
+                mongodb_compliant_group: "_replicaset_compliant_in_three"
+                mongodb_non_compliant_group: "_replicaset_non_compliant_in_three"
+                mongodb_non_voting_group: "_replicaset_non_voting_in_three"
+                mongodb_alien_group: "_replicaset_alien_in_three"
+                mongodb_non_alien_group: "_replicaset_non_alien_in_three"
+                mongodb_member_group: "_replicaset_member_in_three"
+                mongodb_failed_group: "_replicaset_failed_in_three"
 
             - name: Query existing MongoDB replicaset members
               community.mongodb.mongodb_shell:
@@ -424,11 +468,44 @@
           vars:
             _config_list: "{{ hostvars['localhost']['_config_members'] }}"
             _existing_list: "{{ hostvars['localhost']['_existing_members'] }}"
+        - name: Attempt 2 node cluster scale in
+          when: inventory_hostname in _hosts2
+          block:
+            - name: Attempt 2 node cluster scale in
+              ansible.builtin.include_role:
+                name: pokerops.mongodb
+              vars:
+                _map_format: 'nephelaiio.plugins.map_format'
+                _addr_attrs: ['ansible_default_ipv4', 'address']
+                _addresses: "{{ _hosts2 | map('extract', hostvars, _addr_attrs) }}"
+                _members: "{{ _addresses | list }}"
+                mongodb_replicaset_members: "{{ _members | map(_map_format, '%s:' + mongodb_port) | list }}"
+                mongodb_votes_group: "_replicaset_votes_two"
+                mongodb_non_votes_group: "_replicaset_non_votes_two"
+                mongodb_voting_group: "_replicaset_voting_two"
+                mongodb_priority_group: "_replicaset_priority_two"
+                mongodb_non_priority_group: "_replicaset_non_priority_two"
+                mongodb_compliant_group: "_replicaset_compliant_two"
+                mongodb_non_compliant_group: "_replicaset_non_compliant_two"
+                mongodb_non_voting_group: "_replicaset_non_voting_two"
+                mongodb_alien_group: "_replicaset_alien_two"
+                mongodb_non_alien_group: "_replicaset_non_alien_two"
+                mongodb_member_group: "_replicaset_member_two"
+                mongodb_failed_group: "_replicaset_failed_two"
+          rescue:
+            - name: Set result facts
+              ansible.builtin.set_fact:
+                _reconfigure2_failed: true
+          always:
+            - name: Fail on broken replicaset member configuration
+              ansible.builtin.assert:
+                that: _reconfigure2_failed
+                fail_msg: "broken replicaset member configuration operation must fail"
 
-        - name: Attempt 1 node cluster scale down
+        - name: Attempt 1 node cluster scale in
           when: inventory_hostname in _hosts1
           block:
-            - name: Attempt 1 node cluster scale down
+            - name: Attempt 1 node cluster scale in
               ansible.builtin.include_role:
                 name: pokerops.mongodb
               vars:
@@ -437,18 +514,18 @@
                 _addresses: "{{ _hosts1 | map('extract', hostvars, _addr_attrs) }}"
                 _members: "{{ _addresses | list }}"
                 mongodb_replicaset_members: "{{ _members | map(_map_format, '%s:' + mongodb_port) | list }}"
-                mongodb_votes_group: "_replicaset_votes_down_one"
-                mongodb_non_votes_group: "_replicaset_non_votes_down_one"
-                mongodb_voting_group: "_replicaset_voting_down_one"
-                mongodb_priority_group: "_replicaset_priority_down_one"
-                mongodb_non_priority_group: "_replicaset_non_priority_down_one"
-                mongodb_compliant_group: "_replicaset_compliant_down_one"
-                mongodb_non_compliant_group: "_replicaset_non_compliant_down_one"
-                mongodb_non_voting_group: "_replicaset_non_voting_down_one"
-                mongodb_alien_group: "_replicaset_alien_down_one"
-                mongodb_non_alien_group: "_replicaset_non_alien_down_one"
-                mongodb_member_group: "_replicaset_member_down_one"
-                mongodb_failed_group: "_replicaset_failed_down_one"
+                mongodb_votes_group: "_replicaset_votes_in_one"
+                mongodb_non_votes_group: "_replicaset_non_votes_in_one"
+                mongodb_voting_group: "_replicaset_voting_in_one"
+                mongodb_priority_group: "_replicaset_priority_in_one"
+                mongodb_non_priority_group: "_replicaset_non_priority_in_one"
+                mongodb_compliant_group: "_replicaset_compliant_in_one"
+                mongodb_non_compliant_group: "_replicaset_non_compliant_in_one"
+                mongodb_non_voting_group: "_replicaset_non_voting_in_one"
+                mongodb_alien_group: "_replicaset_alien_in_one"
+                mongodb_non_alien_group: "_replicaset_non_alien_in_one"
+                mongodb_member_group: "_replicaset_member_in_one"
+                mongodb_failed_group: "_replicaset_failed_in_one"
           rescue:
             - name: Set result facts
               ansible.builtin.set_fact:

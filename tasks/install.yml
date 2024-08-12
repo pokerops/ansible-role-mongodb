@@ -34,8 +34,7 @@
           - mongodb_pip_packages | default([]) | length > 0
           - (_role == '') or (_role != '' and _role in _roles)
           - mongodb_replicaset_name | default('') != ''
-          - _member_count | int > 1
-          - _member_count | int is odd
+          - _member_count | int > 2
       vars:
         _role: "{{ mongodb_sharding_role }}"
         _roles: ['configsvr', 'shardsvr']
