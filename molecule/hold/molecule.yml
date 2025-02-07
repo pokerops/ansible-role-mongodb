@@ -18,6 +18,7 @@ platforms:
     tmpfs:
       - /tmp
       - /opt
+      - /run
   - name: mongodb-hold-02
     image: "geerlingguy/docker-${MOLECULE_DOCKER_IMAGE:-ubuntu2204}-ansible:latest"
     command: ${MOLECULE_COMMAND:-"/lib/systemd/systemd"}
@@ -29,6 +30,7 @@ platforms:
     tmpfs:
       - /tmp
       - /opt
+      - /run
   - name: mongodb-hold-03
     image: "geerlingguy/docker-${MOLECULE_DOCKER_IMAGE:-ubuntu2204}-ansible:latest"
     command: ${MOLECULE_COMMAND:-"/lib/systemd/systemd"}
@@ -40,6 +42,7 @@ platforms:
     tmpfs:
       - /tmp
       - /opt
+      - /run
 provisioner:
   name: ansible
   playbooks:
