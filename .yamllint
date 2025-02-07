@@ -2,7 +2,7 @@
 extends: default
 
 ignore: |
-  roles/
+  .ansible/roles/
 
 rules:
   braces:
