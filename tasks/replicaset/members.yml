@@ -12,3 +12,4 @@
     _target_revaddrs: "{{ _target_addrs | select('in', _revaddrs) }}"
     _target_revnames: "{{ _target_revaddrs | map('extract', _revaddrs) }}"
     _target_revhosts: "{{ _target_revnames | map(_map_format, '%s:' + mongodb_port) }}"
+  tags: skip_ansible_lint

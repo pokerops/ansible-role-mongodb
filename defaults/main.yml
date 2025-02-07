@@ -12,7 +12,7 @@ mongodb_pip_packages:
 mongodb_service_name: mongod
 mongodb_service_state: started
 mongodb_service_enabled: true
-mongodb_port: '27017'
+mongodb_port: "27017"
 mongodb_user_default:
   debian: mongodb
   redhat: mongod
@@ -34,7 +34,7 @@ mongodb_replicaset_init: true
 mongodb_replicaset_update: true
 mongodb_replicaset_members: []
 mongodb_src_addresses_list: []
-mongodb_sharding_role: ''
+mongodb_sharding_role: ""
 mongodb_firewall_state: started
 mongodb_reconfig_interval: 60
 mongodb_reconfig_poll: 10
