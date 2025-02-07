@@ -37,7 +37,7 @@
           - _member_count | int > 2
       vars:
         _role: "{{ mongodb_sharding_role }}"
-        _roles: ['configsvr', 'shardsvr']
+        _roles: ["configsvr", "shardsvr"]
         _member_count: "{{ mongodb_replicaset_members | length }}"
 
     - name: Stat MongoDB configuration file
@@ -119,7 +119,7 @@
               community.general.ufw:
                 state: enabled
                 from: any
-                port: '22'
+                port: "22"
                 proto: tcp
                 rule: allow
 
@@ -127,7 +127,7 @@
               community.general.ufw:
                 state: enabled
                 from: any
-                port: '161'
+                port: "161"
                 proto: any
                 rule: allow
 
