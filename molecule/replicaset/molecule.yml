@@ -19,8 +19,6 @@ platforms:
       - /tmp
       - /opt
       - /run
-    capabilities:
-      - SYS_ADMIN
   - name: mongodb-replicaset-02
     image: "geerlingguy/docker-${MOLECULE_DOCKER_IMAGE:-ubuntu2204}-ansible:latest"
     command: ${MOLECULE_COMMAND:-"/lib/systemd/systemd"}
@@ -33,8 +31,6 @@ platforms:
       - /tmp
       - /opt
       - /run
-    capabilities:
-      - SYS_ADMIN
   - name: mongodb-replicaset-03
     image: "geerlingguy/docker-${MOLECULE_DOCKER_IMAGE:-ubuntu2204}-ansible:latest"
     command: ${MOLECULE_COMMAND:-"/lib/systemd/systemd"}
@@ -47,8 +43,6 @@ platforms:
       - /tmp
       - /opt
       - /run
-    capabilities:
-      - SYS_ADMIN
   - name: mongodb-replicaset-04
     image: "geerlingguy/docker-${MOLECULE_DOCKER_IMAGE:-ubuntu2204}-ansible:latest"
     command: ${MOLECULE_COMMAND:-"/lib/systemd/systemd"}
@@ -61,8 +55,6 @@ platforms:
       - /tmp
       - /opt
       - /run
-    capabilities:
-      - SYS_ADMIN
   - name: mongodb-replicaset-05
     image: "geerlingguy/docker-${MOLECULE_DOCKER_IMAGE:-ubuntu2204}-ansible:latest"
     command: ${MOLECULE_COMMAND:-"/lib/systemd/systemd"}
@@ -75,8 +67,6 @@ platforms:
       - /tmp
       - /opt
       - /run
-    capabilities:
-      - SYS_ADMIN
   - name: mongodb-replicaset-06
     image: "geerlingguy/docker-${MOLECULE_DOCKER_IMAGE:-ubuntu2204}-ansible:latest"
     command: ${MOLECULE_COMMAND:-"/lib/systemd/systemd"}
@@ -89,8 +79,6 @@ platforms:
       - /tmp
       - /opt
       - /run
-    capabilities:
-      - SYS_ADMIN
   - name: mongodb-replicaset-07
     image: "geerlingguy/docker-${MOLECULE_DOCKER_IMAGE:-ubuntu2204}-ansible:latest"
     command: ${MOLECULE_COMMAND:-"/lib/systemd/systemd"}
@@ -103,8 +91,6 @@ platforms:
       - /tmp
       - /opt
       - /run
-    capabilities:
-      - SYS_ADMIN
 provisioner:
   name: ansible
   playbooks:
