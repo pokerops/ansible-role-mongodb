@@ -27,7 +27,6 @@ jobs:
         image:
           - ubuntu2004
           - ubuntu2204
-          - debian11
           - debian12
           - rockylinux9
     steps:
