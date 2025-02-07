@@ -19,6 +19,8 @@ platforms:
       - /tmp
       - /opt
       - /run
+    capabilities:
+      - SYS_ADMIN
   - name: mongodb-votes-02
     image: "geerlingguy/docker-${MOLECULE_DOCKER_IMAGE:-ubuntu2204}-ansible:latest"
     command: ${MOLECULE_COMMAND:-"/lib/systemd/systemd"}
@@ -31,6 +33,8 @@ platforms:
       - /tmp
       - /opt
       - /run
+    capabilities:
+      - SYS_ADMIN
   - name: mongodb-votes-03
     image: "geerlingguy/docker-${MOLECULE_DOCKER_IMAGE:-ubuntu2204}-ansible:latest"
     command: ${MOLECULE_COMMAND:-"/lib/systemd/systemd"}
@@ -43,6 +47,8 @@ platforms:
       - /tmp
       - /opt
       - /run
+    capabilities:
+      - SYS_ADMIN
   - name: mongodb-votes-04
     image: "geerlingguy/docker-${MOLECULE_DOCKER_IMAGE:-ubuntu2204}-ansible:latest"
     command: ${MOLECULE_COMMAND:-"/lib/systemd/systemd"}
@@ -54,6 +60,8 @@ platforms:
     tmpfs:
       - /tmp
       - /opt
+    capabilities:
+      - SYS_ADMIN
   - name: mongodb-votes-05
     image: "geerlingguy/docker-${MOLECULE_DOCKER_IMAGE:-ubuntu2204}-ansible:latest"
     command: ${MOLECULE_COMMAND:-"/lib/systemd/systemd"}
@@ -65,6 +73,8 @@ platforms:
     tmpfs:
       - /tmp
       - /opt
+    capabilities:
+      - SYS_ADMIN
   - name: mongodb-votes-06
     image: "geerlingguy/docker-${MOLECULE_DOCKER_IMAGE:-ubuntu2204}-ansible:latest"
     command: ${MOLECULE_COMMAND:-"/lib/systemd/systemd"}
@@ -76,6 +86,8 @@ platforms:
     tmpfs:
       - /tmp
       - /opt
+    capabilities:
+      - SYS_ADMIN
   - name: mongodb-votes-07
     image: "geerlingguy/docker-${MOLECULE_DOCKER_IMAGE:-ubuntu2204}-ansible:latest"
     command: ${MOLECULE_COMMAND:-"/lib/systemd/systemd"}
@@ -87,6 +99,8 @@ platforms:
     tmpfs:
       - /tmp
       - /opt
+    capabilities:
+      - SYS_ADMIN
   - name: mongodb-votes-08
     image: "geerlingguy/docker-${MOLECULE_DOCKER_IMAGE:-ubuntu2204}-ansible:latest"
     command: ${MOLECULE_COMMAND:-"/lib/systemd/systemd"}
@@ -98,6 +112,8 @@ platforms:
     tmpfs:
       - /tmp
       - /opt
+    capabilities:
+      - SYS_ADMIN
   - name: mongodb-votes-09
     image: "geerlingguy/docker-${MOLECULE_DOCKER_IMAGE:-ubuntu2204}-ansible:latest"
     command: ${MOLECULE_COMMAND:-"/lib/systemd/systemd"}
@@ -109,6 +125,8 @@ platforms:
     tmpfs:
       - /tmp
       - /opt
+    capabilities:
+      - SYS_ADMIN
 provisioner:
   name: ansible
   playbooks:

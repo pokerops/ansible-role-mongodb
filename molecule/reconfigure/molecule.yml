@@ -19,6 +19,8 @@ platforms:
       - /tmp
       - /opt
       - /run
+    capabilities:
+      - SYS_ADMIN
   - name: mongodb-reconfigure-02
     image: "geerlingguy/docker-${MOLECULE_DOCKER_IMAGE:-ubuntu2204}-ansible:latest"
     command: ${MOLECULE_COMMAND:-"/lib/systemd/systemd"}
@@ -31,6 +33,8 @@ platforms:
       - /tmp
       - /opt
       - /run
+    capabilities:
+      - SYS_ADMIN
   - name: mongodb-reconfigure-03
     image: "geerlingguy/docker-${MOLECULE_DOCKER_IMAGE:-ubuntu2204}-ansible:latest"
     command: ${MOLECULE_COMMAND:-"/lib/systemd/systemd"}
@@ -43,6 +47,8 @@ platforms:
       - /tmp
       - /opt
       - /run
+    capabilities:
+      - SYS_ADMIN
 provisioner:
   name: ansible
   playbooks:
