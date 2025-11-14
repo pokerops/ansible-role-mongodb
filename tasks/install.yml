@@ -1,10 +1,5 @@
 ---
-- name: Install MongoDB pips
-  ansible.builtin.pip:
-    name: "{{ mongodb_pip_packages }}"
-  changed_when: false
-
-- name: Verify MongoDB prerequesites
+- name: Verify MongoDB prerequisites
   tags: always
   block:
     - name: Set variable overrides
@@ -30,8 +25,6 @@
     - name: Verify MongoDB pre-requisites
       ansible.builtin.assert:
         that:
-          - _mongodb_packages | default([]) | length > 0
-          - mongodb_pip_packages | default([]) | length > 0
           - (_role == '') or (_role != '' and _role in _roles)
           - mongodb_replicaset_name | default('') != ''
           - _member_count | int > 2

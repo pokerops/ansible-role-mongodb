@@ -6,9 +6,6 @@ mongodb_packages:
 mongodb_requirements:
   - ca-certificates
   - ufw
-mongodb_pip_packages:
-  - pymongo
-  - python-gnupg
 mongodb_service_name: mongod
 mongodb_service_state: started
 mongodb_service_enabled: true
