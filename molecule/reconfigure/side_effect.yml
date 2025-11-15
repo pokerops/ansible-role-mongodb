@@ -30,15 +30,14 @@
 
     - name: Run reconfiguration tests
       block:
-
         - name: Attempt replicaset rename operation
           block:
             - name: Deploy MongoDB
               ansible.builtin.include_role:
                 name: pokerops.mongodb
               vars:
-                _map_format: 'nephelaiio.plugins.map_format'
-                _addr_attrs: ['ansible_default_ipv4', 'address']
+                _map_format: "nephelaiio.plugins.map_format"
+                _addr_attrs: ["ansible_default_ipv4", "address"]
                 _addresses: "{{ play_hosts | map('extract', hostvars, _addr_attrs) }}"
                 _members: "{{ _addresses | list }}"
                 mongodb_replicaset_members: "{{ _members | map(_map_format, '%s:' + mongodb_port) | list }}"
@@ -60,8 +59,8 @@
               ansible.builtin.include_role:
                 name: pokerops.mongodb
               vars:
-                _map_format: 'nephelaiio.plugins.map_format'
-                _addr_attrs: ['ansible_default_ipv4', 'address']
+                _map_format: "nephelaiio.plugins.map_format"
+                _addr_attrs: ["ansible_default_ipv4", "address"]
                 _addresses: "{{ play_hosts | map('extract', hostvars, _addr_attrs) }}"
                 _members: "{{ _addresses | list }}"
                 mongodb_replicaset_members: "{{ _members | map(_map_format, '%s:' + mongodb_port) | list }}"
@@ -82,8 +81,8 @@
               ansible.builtin.include_role:
                 name: pokerops.mongodb
               vars:
-                _map_format: 'nephelaiio.plugins.map_format'
-                _addr_attrs: ['ansible_default_ipv4', 'address']
+                _map_format: "nephelaiio.plugins.map_format"
+                _addr_attrs: ["ansible_default_ipv4", "address"]
                 _addresses: "{{ play_hosts | map('extract', hostvars, _addr_attrs) }}"
                 _members: "{{ _addresses | list }}"
                 mongodb_replicaset_members: "{{ _members | map(_map_format, '%s:' + mongodb_port) | list }}"

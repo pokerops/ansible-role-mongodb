@@ -8,7 +8,6 @@
         name: ip6table_filter
         state: present
 
-
 - name: Prepare instances
   hosts: all
   become: true
@@ -26,9 +25,11 @@
           - crb
       when: ansible_os_family == 'RedHat'
 
-    - name: Install virtualenv
+    - name: Install virtualenv packages
       ansible.builtin.package:
-        name: virtualenv
+        name:
+          - virtualenv
+          - python3-packaging
 
     - name: Configure MongoDB repository
       ansible.builtin.include_role:
