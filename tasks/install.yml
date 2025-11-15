@@ -95,7 +95,7 @@
         dest: "{{ mongodb_config_path }}"
         owner: "{{ _mongodb_user }}"
         group: "{{ _mongodb_group }}"
-        mode: "u=rw,go=4"
+        mode: "u=rw,go=r"
       notify: Restart MongoDB
       register: config_manage
 
