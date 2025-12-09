@@ -99,7 +99,7 @@
           - _non_voting_count | length <= 43
           - _all_defined_votes or _all_undefined_votes
           - _all_defined_priority or _all_undefined_priority
-          - _compliant_count | length == mongodb_replicaset_members | length
+          - (_compliant_count | length) == (mongodb_replicaset_members | length)
       vars:
         _undefined_votes_count: "{{ replicaset_non_votes }}"
         _non_voting_count: "{{ replicaset_non_voting }}"
@@ -128,9 +128,9 @@
       ansible.builtin.set_fact:
         _revaddrs: "{{ _host_addrs | zip(_hosts) | community.general.dict }}"
         _fwdaddrs: "{{ _hosts | zip(_host_addrs) | community.general.dict }}"
-        _map_format: 'nephelaiio.plugins.map_format'
-        _split_with: 'nephelaiio.plugins.split_with'
-        _select_attrs: 'nephelaiio.plugins.select_attributes'
+        _map_format: "nephelaiio.plugins.map_format"
+        _split_with: "nephelaiio.plugins.split_with"
+        _select_attrs: "nephelaiio.plugins.select_attributes"
       vars:
         _hosts: "{{ _mongodb_hosts }}"
         _host_addrs: "{{ _hosts | map('extract', hostvars, ['ansible_default_ipv4', 'address']) }}"
@@ -150,10 +150,10 @@
           vars:
             _hosts: "{{ _mongodb_hosts }}"
             _host_members: "[{{ mongodb_replicaset_members | map(_map_format, _host_format) | join(',') }}]"
-            _host_format: "{ \"host\": \"%s\" }"
+            _host_format: '{ "host": "%s" }'
             _priorities: "[{{ _hosts | map('extract', hostvars, ['_mongodb_priority']) | map(_map_format, _priority_format) | join(',') }}]"
-            _priority_format: "{ \"priority\": %s }"
-            _votes_format: "{ \"votes\": %s }"
+            _priority_format: '{ "priority": %s }'
+            _votes_format: '{ "votes": %s }'
             _votes: "[{{ _hosts | map('extract', hostvars, ['_mongodb_votes']) | map(_map_format, _votes_format) | join(',') }}]"
 
         - name: Wait for replicaset to stabilize
@@ -220,9 +220,9 @@
             _member_names: "{{ _existing_members_list | map(attribute='host') }}"
             _hosts_filter: "{{ mongodb_replicaset_members | select('in', _member_names) }}"
             _hosts: "[{{ _hosts_filter | map(_map_format, _hosts_format) | join(',') }}]"
-            _hosts_format: "{ \"host\": \"%s\" }"
+            _hosts_format: '{ "host": "%s" }'
             _votes: "[{{ replicaset_members | map('extract', hostvars, ['_mongodb_votes']) | map(_map_format, _votes_format) | join(',') }}]"
-            _votes_format: "{ \"votes\": %s }"
+            _votes_format: '{ "votes": %s }'
             _max_voting_count: "{{ _existing_members_list | selectattr('votes', 'equalto', 1) | length >= 7 }}"
             _replica_members: "{{ _hosts | zip(_votes) | map('combine') }}"
             _voting_members: "{{ _replica_members | selectattr('votes', 'equalto', 1) }}"
@@ -264,10 +264,10 @@
           vars:
             _hosts: "{{ _mongodb_hosts }}"
             _host_members: "[{{ mongodb_replicaset_members | map(_map_format, _host_format) | join(',') }}]"
-            _host_format: "{ \"host\": \"%s\" }"
+            _host_format: '{ "host": "%s" }'
             _priorities: "[{{ _hosts | map('extract', hostvars, ['_mongodb_priority']) | map(_map_format, _priority_format) | join(',') }}]"
-            _priority_format: "{ \"priority\": \"%s\" }"
-            _votes_format: "{ \"votes\": \"%s\" }"
+            _priority_format: '{ "priority": "%s" }'
+            _votes_format: '{ "votes": "%s" }'
             _votes: "[{{ _hosts | map('extract', hostvars, ['_mongodb_votes']) | map(_map_format, _votes_format) | join(',') }}]"
             _new_votes: "{{ _host_members | zip(_votes, _priorities) | map('combine') }}"
 
