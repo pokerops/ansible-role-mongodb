@@ -27,7 +27,6 @@ Please make sure your environment has [docker](https://www.docker.com) installed
 
 Role is tested against the following distributions (docker images):
 
-- Ubuntu Noble
 - Ubuntu Jammy
 - Ubuntu Focal
 - Debian Trixie
