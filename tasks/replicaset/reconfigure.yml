@@ -1,28 +1,41 @@
 ---
-- name: Manage replicaset primary tasks
-  ansible.builtin.include_tasks: "primary.yml"
+- name: Assert MongoDB replicaset primary
+  ansible.builtin.assert:
+    that: replicaset_is_primary | bool
+    fail_msg: "MongoDB replicaset primary is not available. Reconfiguration cannot be performed"
+  tags: always
 
-- name: Query existing MongoDB replicaset config
-  community.mongodb.mongodb_shell:
-    eval: "rs.conf().members"
-    mongo_cmd: "{{ mongodb_shell | default(omit) }}"
-  retries: "{{ mongodb_query_retries }}"
-  delay: "{{ mongodb_query_delay }}"
-  register: mongodb_config
-  until: mongodb_config is succeeded
-  changed_when: false
+- name: Debug MongoDB replicaset member to be updated
+  ansible.builtin.debug:
+    msg: "MongoDB replicaset member to be updated: {{ item }}"
+  tags: always
 
-- name: Set MongoDB replicaset member facts
-  ansible.builtin.set_fact:
-    _existing_members: "{{ _members_list }}"
+- name: Enable MongoDB replicaset new member votes
+  community.mongodb.mongodb_replicaset:
+    replica_set: "{{ mongodb_replicaset_name }}"
+    members: "{{ _existing_members + [_update_member] }}"
+    reconfigure: true
+    validate: false
   vars:
-    _select_attrs: 'nephelaiio.plugins.select_attributes'
-    _members_list: "{{ mongodb_config.transformed_output | map(_select_attrs, _attrs) | list }}"
-    _attrs:
-      - host
-      - priority
-      - hidden
-      - votes
+    _member_addr: "{{ item | split(':') | first }}"
+    _hosts: "{{ _mongodb_hosts }}"
+    _member_filter: "{{ _revaddrs[_member_addr] if _member_addr not in _hosts else _member_addr }}"
+    _priority: "{{ hostvars[_member_filter]['_mongodb_priority'] }}"
+    _votes: "{{ hostvars[_member_filter]['_mongodb_votes'] }}"
+    _update_member: "{{ {'host': item, 'hidden': false, 'votes': _votes | int, 'priority': _priority | float} }}"
+  when: _add_member | default('false') | bool
+  tags:
+    - add
+
+- name: Drop stale member from MongoDB replicaset
+  community.mongodb.mongodb_replicaset:
+    replica_set: "{{ mongodb_replicaset_name }}"
+    members: "{{ _existing_members | rejectattr('host', 'equalto', item) }}"
+    reconfigure: true
+    validate: false
+  when: _remove_member | default('false') | bool
+  tags:
+    - remove
 
 - name: Manage existing member from MongoDB replicaset
   community.mongodb.mongodb_replicaset:
@@ -45,61 +58,9 @@
   when:
     - _existing_member | default('false') | bool
     - (_votes_query or _priority_query) or (_votes_query and _priority_query)
-
-- name: Manage MongoDB new members
-  when: _add_member | default('false') | bool
-  block:
-
-    - name: Add MongoDB new members as hidden
-      when: _mongodb_version is version('5.0.0', '<')
-      block:
-
-        - name: Add new member to MongoDB replicaset
-          community.mongodb.mongodb_replicaset:
-            replica_set: "{{ mongodb_replicaset_name }}"
-            members: "{{ _existing_members + [_update_member] }}"
-            reconfigure: true
-            validate: false
-          vars:
-            _update_member:
-              host: "{{ item }}"
-              hidden: true
-              votes: 0
-              priority: 0
-
-        - name: Wait for replicaset to stabilize
-          community.mongodb.mongodb_status:
-            replica_set: "{{ mongodb_replicaset_name }}"
-            validate: minimal
-            poll: "{{ mongodb_reconfig_poll }}"
-            interval: "{{ mongodb_reconfig_interval }}"
-          retries: "{{ mongodb_converge_retries }}"
-          delay: "{{ mongodb_converge_delay }}"
-          register: mongodb_status
-          until: mongodb_status is succeeded
-          changed_when: false
-
-    - name: Enable MongoDB replicaset new member votes
-      community.mongodb.mongodb_replicaset:
-        replica_set: "{{ mongodb_replicaset_name }}"
-        members: "{{ _existing_members + [_update_member] }}"
-        reconfigure: true
-        validate: false
-      vars:
-        _member_addr: "{{ item | split(':') | first }}"
-        _hosts: "{{ _mongodb_hosts }}"
-        _member_filter: "{{ _revaddrs[_member_addr] if _member_addr not in _hosts else _member_addr }}"
-        _priority: "{{ hostvars[_member_filter]['_mongodb_priority'] }}"
-        _votes: "{{ hostvars[_member_filter]['_mongodb_votes'] }}"
-        _update_member: "{{ {'host': item, 'hidden': false, 'votes': _votes | int, 'priority': _priority | float} }}"
-
-- name: Drop stale member from MongoDB replicaset
-  community.mongodb.mongodb_replicaset:
-    replica_set: "{{ mongodb_replicaset_name }}"
-    members: "{{ _existing_members | rejectattr('host', 'equalto', item) }}"
-    reconfigure: true
-    validate: false
-  when: _remove_member | default('false') | bool
+    - not replicaset_is_primary | bool
+  tags:
+    - update
 
 - name: Wait for replicaset to stabilize
   community.mongodb.mongodb_status:
@@ -112,3 +73,4 @@
   register: mongodb_status
   until: mongodb_status is succeeded
   changed_when: false
+  tags: always

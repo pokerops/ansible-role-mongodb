@@ -1,6 +1,6 @@
 ---
 - name: Verify MongoDB prerequisites
-  tags: always
+  tags: install
   block:
     - name: Set variable overrides
       ansible.builtin.set_fact:
@@ -21,6 +21,7 @@
           - "{{ ansible_distribution | lower }}"
           - "{{ ansible_os_family | lower }}"
           - "default"
+      tags: install
 
     - name: Verify MongoDB pre-requisites
       ansible.builtin.assert:
@@ -32,23 +33,28 @@
         _role: "{{ mongodb_sharding_role }}"
         _roles: ["configsvr", "shardsvr"]
         _member_count: "{{ mongodb_replicaset_members | length }}"
+      tags: install
 
     - name: Stat MongoDB configuration file
       ansible.builtin.stat:
         path: "{{ mongodb_config_path }}"
       register: _mongodb_config_file
+      tags: install
 
     - name: Verify MongoDB configuration
       when: _mongodb_config_file.stat.exists
+      tags: install
       block:
         - name: Slurp MongoDB configuration
           ansible.builtin.slurp:
             path: "{{ mongodb_config_path }}"
           register: _mongodb_config_data
+          tags: install
 
         - name: Decode MongoDB configuration
           ansible.builtin.set_fact:
             _mongodb_config: "{{ _mongodb_config_data['content'] | b64decode | from_yaml }}"
+          tags: install
 
         - name: Verify sharding configuration
           ansible.builtin.fail:
@@ -60,15 +66,18 @@
             - _sharding in _mongodb_config
             - _role in _mongodb_config[_sharding]
             - _mongodb_config[_sharding][_role] != mongodb_sharding_role
+          tags: install
 
 - name: Release package holds
   ansible.builtin.include_tasks: lock.yml
   vars:
     _lock_state: install
+  tags: install
 
 - name: Install MongoDB prerequisites
   ansible.builtin.package:
     name: "{{ mongodb_requirements }}"
+  tags: install
 
 - name: Install packages and configure package holds
   block:
@@ -79,12 +88,14 @@
       delay: "{{ mongodb_install_delay }}"
       register: mongodb_install
       until: mongodb_install is succeeded
+      tags: install
 
   always:
     - name: Configure package holds
       ansible.builtin.include_tasks: lock.yml
       vars:
         _lock_state: hold
+      tags: install
 
 - name: Configure MongoDB
   tags: configure
@@ -98,15 +109,19 @@
         mode: "u=rw,go=r"
       notify: Restart MongoDB
       register: config_manage
+      tags: configure
 
     - name: Gather service facts
       ansible.builtin.service_facts:
+      tags: configure
 
     - name: Manage firewall
       when: ('ufw' in services) or ('ufw.service' in services)
+      tags: configure
       block:
         - name: Configure ufw access rules
           when: mongodb_firewall_state != "stopped"
+          tags: configure
           block:
             - name: Configure ssh firewall access
               community.general.ufw:
@@ -115,6 +130,7 @@
                 port: "22"
                 proto: tcp
                 rule: allow
+              tags: configure
 
             - name: Configure snmp firewall access
               community.general.ufw:
@@ -123,6 +139,7 @@
                 port: "161"
                 proto: any
                 rule: allow
+              tags: configure
 
             - name: Compute MongoDB address block
               ansible.builtin.set_fact:
@@ -132,6 +149,7 @@
                 _network: "{{ ansible_default_ipv4.network }}"
                 _prefix: "{{ ansible_default_ipv4.prefix }}"
                 _default_address: "{{ _network }}/{{ _prefix }}"
+              tags: configure
 
             - name: Configure MongoDB firewall access
               community.general.ufw:
@@ -141,31 +159,66 @@
                 proto: tcp
                 rule: allow
               loop: "{{ _mongodb_addresses_list }}"
+              tags: configure
 
             - name: Manage ufw service
               ansible.builtin.service:
                 name: "ufw.service"
                 state: "{{ mongodb_firewall_state }}"
                 enabled: true
+              tags: configure
 
         - name: Disable ufw service
           when: mongodb_firewall_state == "stopped"
+          tags: configure
           block:
             - name: Query ufw status
               ansible.builtin.command: ufw status
               changed_when: false
               register: _ufw_status
+              tags: configure
 
             - name: Disable ufw
               ansible.builtin.command: ufw disable
               when: _ufw_status.stdout is not match("Status[:] inactive")
-              tags: skip_ansible_lint
+              tags:
+              - skip_ansible_lint
+              - configure
 
             - name: Stop ufw service
               ansible.builtin.service:
                 name: "ufw.service"
                 state: stopped
                 enabled: false
+              tags: configure
 
-- name: Include service tasks
-  ansible.builtin.include_tasks: service.yml
+- name: Manage MongoDB services
+  block:
+    - name: Manage MongoDB service
+      ansible.builtin.service:
+        name: "{{ mongodb_service_name }}"
+        state: "{{ mongodb_service_state }}"
+        enabled: "{{ mongodb_service_enabled }}"
+      tags:
+        - install
+        - configure
+
+    - name: Flush handlers
+      ansible.builtin.meta: flush_handlers
+      tags:
+        - install
+        - configure
+
+    - name: Wait for MongoDB to be up
+      community.mongodb.mongodb_shell:
+        eval: "db.runCommand({ping: 1})"
+        mongo_cmd: "{{ mongodb_shell | default(omit) }}"
+      retries: "{{ mongodb_converge_retries }}"
+      delay: "{{ mongodb_converge_delay }}"
+      register: mongodb_status
+      until: mongodb_status is succeeded
+      when: mongodb_service_state != "stopped"
+      changed_when: false
+      tags:
+        - install
+        - configure

@@ -7,12 +7,14 @@
   register: mongodb_rs
   until: mongodb_rs is succeeded
   changed_when: false
+  tags: always
 
 - name: Set replicaset primary facts
   ansible.builtin.set_fact:
     replicaset_is_primary: "{{ _is_primary }}"
   vars:
     _is_primary: "{{ mongodb_rs.transformed_output.ismaster | bool }}"
+  tags: always
 
 - name: Compute replicaset primary member
   ansible.builtin.set_fact:
@@ -23,12 +25,14 @@
   delegate_to: localhost
   delegate_facts: true
   when: replicaset_is_primary | bool
+  tags: always
 
 - name: Debug MongoDB replicaset primary
   ansible.builtin.debug:
     msg: "MongoDB primary member is: {{ _primary }}"
   vars:
     _primary: "{{ hostvars['localhost']['replicaset_primary'] }}"
+  tags: always
 
 - name: Verify MongoDB replicaset status
   ansible.builtin.assert:
@@ -38,3 +42,4 @@
     _primary: "{{ hostvars['localhost']['replicaset_primary'] }}"
     _votes: "{{ hostvars[_primary]['_mongodb_votes'] }}"
     _priority: "{{ hostvars[_primary]['_mongodb_priority'] }}"
+  tags: always

@@ -1,6 +1,17 @@
 ---
+- name: Recognition of the environment
+  ansible.builtin.services_facts:
+  register: services
+  tags: always
+
+- name: Defining activities to be carried out
+  ansible.builtin.set_fact:
+    _install_mongodb: "{{ 'mongodb' not in services }}"
+  tags: always
+
 - name: Install MongoDB
   ansible.builtin.include_tasks: "install.yml"
+  when: _install_mongodb | default('false') | bool
   tags: install
 
 - name: Configure MongoDB
