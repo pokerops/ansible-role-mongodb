@@ -182,8 +182,8 @@
               ansible.builtin.command: ufw disable
               when: _ufw_status.stdout is not match("Status[:] inactive")
               tags:
-              - skip_ansible_lint
-              - configure
+                - skip_ansible_lint
+                - configure
 
             - name: Stop ufw service
               ansible.builtin.service:
