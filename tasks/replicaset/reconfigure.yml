@@ -7,7 +7,13 @@
 
 - name: Debug MongoDB replicaset member to be updated
   ansible.builtin.debug:
-    msg: "MongoDB replicaset member to be updated: {{ item }}"
+    msg: |
+      "MongoDB replicaset member to be updated: {{ item }}"
+      "Executing process to: {{ _process }}"
+  vars:
+    _fallback: "{{ 'Change votes and priorities' if _existing_member else 'Unknow state' }}"
+    _step: "{{ 'Remove member' if _remove_member else _step2 }}"
+    _process: "{{ 'Add member' if _add_member else _step }}"
   tags: always
 
 - name: Enable MongoDB replicaset new member votes

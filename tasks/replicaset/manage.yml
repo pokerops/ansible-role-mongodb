@@ -205,7 +205,7 @@
           changed_when: false
           tags: always
 
-        - name: Compute MongoDB replicaset member facts - configured
+        - name: Compute MongoDB replicaset member facts
           ansible.builtin.include_tasks: members.yml
           vars:
             _existing_members_list: "{{ mongodb_config.transformed_output | map(attribute='host') }}"

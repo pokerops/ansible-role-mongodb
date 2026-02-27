@@ -37,7 +37,7 @@
 - name: Verify MongoDB replicaset status
   ansible.builtin.assert:
     that: _votes | int == 1 and _priority | float > 0
-    fail_msg: "MongoDB primary {{ _primary }} cannot be blocked. Change priority to a lower value first"
+    fail_msg: "MongoDB primary {{ _primary }} cannot be blocked. Priority: {{ _priority }}. Vote: {{ _votes }}. Change priority to a lower value first."
   vars:
     _primary: "{{ hostvars['localhost']['replicaset_primary'] }}"
     _votes: "{{ hostvars[_primary]['_mongodb_votes'] }}"
