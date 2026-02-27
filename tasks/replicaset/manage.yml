@@ -161,8 +161,8 @@
             validate: false
           vars:
             _hosts: "{{ _mongodb_hosts }}"
-            _host_members: "[{{ _mongodb_hosts | map(_map_format, _host_format) | join(',') }}]"
-            _host_format: '{ "host": "%s" }'
+            _host_members: "[{{ _hosts | map(_map_format, _host_format + mongodb_port) | join(',') }}]"
+            _host_format: '{ "host": "%s"  }'
             _priorities: "[{{ _hosts | map('extract', hostvars, ['_mongodb_priority']) | map(_map_format, _priority_format) | join(',') }}]"
             _priority_format: '{ "priority": %s }'
             _votes_format: '{ "votes": %s }'

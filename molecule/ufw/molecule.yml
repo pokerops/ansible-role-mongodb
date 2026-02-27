@@ -67,5 +67,3 @@ scenario:
     - converge
   destroy_sequence:
     - destroy
-  cleanup_sequence:
-    - cleanup
