@@ -137,9 +137,24 @@
         }
       }
     },
-    "github:NixOS/nixpkgs/0da3c44a9460a26d2025ec3ed2ec60a895eb1114": {
-      "last_modified": "1970-01-01T00:00:00Z",
-      "resolved": "github:NixOS/nixpkgs/0da3c44a9460a26d2025ec3ed2ec60a895eb1114"
+    "github:NixOS/nixpkgs/nixpkgs-unstable": {
+      "last_modified": "2026-02-26T05:06:13Z",
+      "resolved": "github:NixOS/nixpkgs/26eaeac4e409d7b5a6bf6f90a2a2dc223c78d915?lastModified=1772082373&narHash=sha256-wySf8a6hvuqgFdwvvzPPTARBCMLDz7WFAufGkllD1M4%3D"
+    },
+    "glibc": {
+      "resolved": "github:NixOS/nixpkgs/26eaeac4e409d7b5a6bf6f90a2a2dc223c78d915?narHash=sha256-wySf8a6hvuqgFdwvvzPPTARBCMLDz7WFAufGkllD1M4%3D#glibc",
+      "source": "nixpkg",
+      "systems": {
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "51-bin",
+              "path": "/nix/store/2c48s343k15i0cmwb9cp1vi6randmzcw-glibc-2.42-51-bin",
+              "default": true
+            }
+          ]
+        }
+      }
     },
     "gnumake@latest": {
       "last_modified": "2026-02-24T08:56:33Z",
