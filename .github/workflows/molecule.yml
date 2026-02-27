@@ -29,6 +29,8 @@ jobs:
           - name: debian12
             command: /lib/systemd/systemd
     steps:
+      - name: Clear previous environments
+        run: rm -rf ${HOME}/.ansible/{collections,roles}
       - name: Run molecule test
         uses: pokerops/ansible-utils@master
         with:
