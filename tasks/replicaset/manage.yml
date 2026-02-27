@@ -161,7 +161,8 @@
             validate: false
           vars:
             _hosts: "{{ _mongodb_hosts }}"
-            _ipport_members: "[{{ mongodb_replicaset_members | map(_map_format, _host_format) | join(',') }}]"
+            _host_addrs: "{{ _hosts | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | map(_map_format, '%s:' + mongodb_port) | list }}"
+            _ipport_members: "[{{ _host_addrs | map(_map_format, _host_format) | join(',') }}]"
             _host_format: '{ "host": "%s" }'
             _priorities: "[{{ _hosts | map('extract', hostvars, ['_mongodb_priority']) | map(_map_format, _priority_format) | join(',') }}]"
             _priority_format: '{ "priority": %s }'
