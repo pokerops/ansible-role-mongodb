@@ -157,11 +157,11 @@
         - name: Create MongoDB replicaset
           community.mongodb.mongodb_replicaset:
             replica_set: "{{ mongodb_replicaset_name }}"
-            members: "{{ _host_members | zip(_votes, _priorities) | map('combine') }}"
+            members: "{{ _ipport_members | zip(_votes, _priorities) | map('combine') }}"
             validate: false
           vars:
-            _hosts: "{{ mongodb_replicaset_members | map(_split_with, ':') | map('first')  }}"
-            _host_members: "[{{ mongodb_replicaset_members | map(_map_format, _host_format) | join(',') }}]"
+            _hosts: "{{ _mongodb_hosts }}"
+            _ipport_members: "[{{ mongodb_replicaset_members | map(_map_format, _host_format) | join(',') }}]"
             _host_format: '{ "host": "%s" }'
             _priorities: "[{{ _hosts | map('extract', hostvars, ['_mongodb_priority']) | map(_map_format, _priority_format) | join(',') }}]"
             _priority_format: '{ "priority": %s }'
