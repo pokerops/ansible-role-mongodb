@@ -161,7 +161,7 @@
             validate: false
           vars:
             _hosts: "{{ _mongodb_hosts }}"
-            _hosts_ports: "{{ _hosts | map(_map_format, '%s:' + mongodb_port) }}"
+            _hosts_ports: "{{ _hosts | map(_map_format, '%s:' + mongodb_port) | list }}"
             _host_members: "[{{ _hosts_ports | map(_map_format, _host_format) | join(',') }}]"
             _host_format: '{ "host": "%s" }'
             _priorities: "[{{ _hosts | map('extract', hostvars, ['_mongodb_priority']) | map(_map_format, _priority_format) | join(',') }}]"
