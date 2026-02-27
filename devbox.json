@@ -1,7 +1,5 @@
 {
   "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.16.0/.schema/devbox.schema.json",
-  "nixpkgs": {
-    "commit": "0da3c44a9460a26d2025ec3ed2ec60a895eb1114"
-  },
+  "packages": ["python@3.12", "glibc"],
   "include": ["github:pokerops/ansible-utils?dir=devbox/molecule"]
 }
