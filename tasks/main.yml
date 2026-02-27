@@ -1,6 +1,6 @@
 ---
 - name: Recognition of the environment
-  ansible.builtin.services_facts:
+  ansible.builtin.service_facts:
   register: services
   tags: always
 
