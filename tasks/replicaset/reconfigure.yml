@@ -7,9 +7,9 @@
 
 - name: Debug MongoDB replicaset member to be updated
   ansible.builtin.debug:
-    msg: |
-      "MongoDB replicaset member to be updated: {{ item }}"
-      "Executing process to: {{ _process }}"
+    msg:
+      - "MongoDB replicaset member to be updated: {{ item }}"
+      - "Executing process to: {{ _process }}"
   vars:
     _fallback: "{{ 'Change votes and priorities' if _existing_member | default('false') | bool else 'Unknow state' }}"
     _step: "{{ 'Remove member' if _remove_member | default('false') | bool else _fallback }}"
