@@ -269,6 +269,7 @@
             _priority_format: '{ "priority": "%s" }'
             _votes_format: '{ "votes": "%s" }'
             _votes: "[{{ _hosts | map('extract', hostvars, ['_mongodb_votes']) | map(_map_format, _votes_format) | join(',') }}]"
+            _new_votes: "{{ _host_members | zip(_votes, _priorities) | map('combine') }}"
 
         - name: Verify MongoDB stale members to remove
           ansible.builtin.assert:
