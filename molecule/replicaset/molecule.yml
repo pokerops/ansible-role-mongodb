@@ -106,6 +106,7 @@ provisioner:
           mongodb_replicaset_name: test
           mongodb_firewall_state: stopped
           mongodb_sharding_role: shardsvr
+          mongodb_repo_release: 8.2
 verifier:
   name: ansible
 scenario:

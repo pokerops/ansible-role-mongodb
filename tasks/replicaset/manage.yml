@@ -269,7 +269,17 @@
             _priority_format: '{ "priority": "%s" }'
             _votes_format: '{ "votes": "%s" }'
             _votes: "[{{ _hosts | map('extract', hostvars, ['_mongodb_votes']) | map(_map_format, _votes_format) | join(',') }}]"
-            _new_votes: "{{ _host_members | zip(_votes, _priorities) | map('combine') }}"
+
+        - name: Verify MongoDB stale members to remove
+          ansible.builtin.assert:
+            that: _mongodb_delete_members | length <= 1
+            fail_msg: "Replicaset members to remove should be one by one"
+
+        - name: Remove stale MongoDB replicaset members
+          ansible.builtin.include_tasks: "reconfigure.yml"
+          vars:
+            _remove_member: true
+          loop: "{{ _mongodb_delete_members }}"
 
         - name: Manage existing MongoDB replicaset members
           ansible.builtin.include_tasks: "reconfigure.yml"
@@ -278,7 +288,7 @@
           loop: "{{ _mongodb_existing_members }}"
 
         - name: Manage MongoDB replicaset members
-          when: (_mongodb_add_members + _mongodb_delete_members) | length > 0
+          when: _mongodb_add_members | length > 0
           block:
             - name: Gather MongoDB version
               community.mongodb.mongodb_info:
@@ -293,12 +303,6 @@
                 _mongodb_info: "{{ mongodb_installed_version.general }}"
                 _mongodb_version: "{{ _mongodb_info.version }}"
               loop: "{{ _mongodb_add_members }}"
-
-            - name: Remove stale MongoDB replicaset members
-              ansible.builtin.include_tasks: "reconfigure.yml"
-              vars:
-                _remove_member: true
-              loop: "{{ _mongodb_delete_members }}"
 
     - name: Allow read operations on secondary replicaset members
       community.mongodb.mongodb_shell:
