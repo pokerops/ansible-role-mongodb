@@ -242,47 +242,6 @@
             _non_voting_filter: "{{ _non_voting_members | zip_longest(_voting_members) | flatten | map(attribute='host') }}"
             _voting_filter: "{{ _voting_members | zip_longest(_non_voting_members) | flatten | map(attribute='host') }}"
 
-        - name: Debug target members
-          ansible.builtin.debug:
-            msg: "Target members are [{{ mongodb_replicaset_members | join(',') }}]"
-
-        - name: Debug cluster facts
-          ansible.builtin.debug:
-            msg: "Detected cluster members [{{ _existing_members_list | join(',') }}]"
-          vars:
-            _existing_members_list: "{{ _mongodb_config | map(attribute='host') }}"
-
-        - name: Debug new cluster members
-          ansible.builtin.debug:
-            msg: "Adding cluster members [{{ _mongodb_add_members | join(',') }}]"
-
-        - name: Debug stale cluster members
-          ansible.builtin.debug:
-            msg: "Removing cluster members [{{ _mongodb_delete_members | join(',') }}]"
-
-        - name: Debug existing votes and priorities
-          ansible.builtin.debug:
-            msg: "{{ _existing_members_list | map(_select_attrs, _attrs) }}"
-          vars:
-            _existing_members_list: "{{ _mongodb_config }}"
-            _attrs:
-              - "host"
-              - "votes"
-              - "priority"
-
-        - name: Debug new votes and priorities
-          ansible.builtin.debug:
-            msg: "{{ _new_votes }}"
-          vars:
-            _hosts: "{{ _mongodb_hosts }}"
-            _host_members: "[{{ mongodb_replicaset_members | map(_map_format, _host_format) | join(',') }}]"
-            _host_format: '{ "host": "%s" }'
-            _priorities: "[{{ _hosts | map('extract', hostvars, ['_mongodb_priority']) | map(_map_format, _priority_format) | join(',') }}]"
-            _priority_format: '{ "priority": "%s" }'
-            _votes_format: '{ "votes": "%s" }'
-            _votes: "[{{ _hosts | map('extract', hostvars, ['_mongodb_votes']) | map(_map_format, _votes_format) | join(',') }}]"
-            _new_votes: "{{ _host_members | zip(_votes, _priorities) | map('combine') }}"
-
         - name: Verify MongoDB stale members to remove
           ansible.builtin.assert:
             that: _mongodb_delete_members | length <= 1
@@ -291,6 +250,47 @@
         - name: Manage primary tasks
           when: replicaset_is_primary | bool
           block:
+            - name: Debug target members
+              ansible.builtin.debug:
+                msg: "Target members are [{{ mongodb_replicaset_members | join(',') }}]"
+
+            - name: Debug cluster facts
+              ansible.builtin.debug:
+                msg: "Detected cluster members [{{ _existing_members_list | join(',') }}]"
+              vars:
+                _existing_members_list: "{{ _mongodb_config | map(attribute='host') }}"
+
+            - name: Debug new cluster members
+              ansible.builtin.debug:
+                msg: "Adding cluster members [{{ _mongodb_add_members | join(',') }}]"
+
+            - name: Debug stale cluster members
+              ansible.builtin.debug:
+                msg: "Removing cluster members [{{ _mongodb_delete_members | join(',') }}]"
+
+            - name: Debug existing votes and priorities
+              ansible.builtin.debug:
+                msg: "{{ _existing_members_list | map(_select_attrs, _attrs) }}"
+              vars:
+                _existing_members_list: "{{ _mongodb_config }}"
+                _attrs:
+                  - "host"
+                  - "votes"
+                  - "priority"
+
+            - name: Debug new votes and priorities
+              ansible.builtin.debug:
+                msg: "{{ _new_votes }}"
+              vars:
+                _hosts: "{{ _mongodb_hosts }}"
+                _host_members: "[{{ mongodb_replicaset_members | map(_map_format, _host_format) | join(',') }}]"
+                _host_format: '{ "host": "%s" }'
+                _priorities: "[{{ _hosts | map('extract', hostvars, ['_mongodb_priority']) | map(_map_format, _priority_format) | join(',') }}]"
+                _priority_format: '{ "priority": "%s" }'
+                _votes_format: '{ "votes": "%s" }'
+                _votes: "[{{ _hosts | map('extract', hostvars, ['_mongodb_votes']) | map(_map_format, _votes_format) | join(',') }}]"
+                _new_votes: "{{ _host_members | zip(_votes, _priorities) | map('combine') }}"
+
             - name: Remove stale MongoDB replicaset members
               ansible.builtin.include_tasks: "reconfigure.yml"
               vars:
