@@ -1,6 +1,7 @@
 ---
 - name: Reconfigure replica set
   hosts: all
+  any_errors_fatal: true
   vars:
     _hosts1: "{{ play_hosts[:1] }}"
     _hosts2: "{{ play_hosts[:2] }}"
