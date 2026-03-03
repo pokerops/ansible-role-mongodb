@@ -17,7 +17,7 @@
         - name: Set base facts
           ansible.builtin.set_fact:
             _reconfigure1_failed: false
-            _reconfigure2_failed: false
+            _reconfigure3_failed: false
             _reconfigure4_failed: false
             _reconfigure6_failed: false
 
@@ -409,7 +409,7 @@
             _config_list: "{{ hostvars['localhost']['_config_members'] }}"
             _existing_list: "{{ hostvars['localhost']['_existing_members'] }}"
 
-        - name: Scale down to 3 node cluster
+        - name: Attempt 3 node cluster scale down
           when: inventory_hostname in _hosts3
           block:
             - name: Scale down to 3 node cluster
@@ -442,68 +442,17 @@
                 mongodb_member_group: "_replicaset_member_in_three"
                 mongodb_failed_group: "_replicaset_failed_in_three"
 
-            - name: Query existing MongoDB replicaset members
-              community.mongodb.mongodb_shell:
-                eval: "rs.status().members"
-                mongo_cmd: "{{ mongodb_shell | default(omit) }}"
-              register: _query_members
-              changed_when: false
-
-            - name: Set replicaset member facts
-              ansible.builtin.set_fact:
-                _existing_members: "{{ _query_members.transformed_output | map(attribute='name') }}"
-              delegate_to: localhost
-              delegate_facts: true
-
-            - name: Debug replicaset config members
-              ansible.builtin.debug:
-                msg: "{{ hostvars['localhost']['_config_members'] }}"
-
-            - name: Debug replicaset existing members
-              ansible.builtin.debug:
-                msg: "{{ hostvars['localhost']['_existing_members'] }}"
-
-        - name: Check cluster members
-          ansible.builtin.assert:
-            that: _config_list | symmetric_difference(_existing_list) | length == 0
-          vars:
-            _config_list: "{{ hostvars['localhost']['_config_members'] }}"
-            _existing_list: "{{ hostvars['localhost']['_existing_members'] }}"
-        - name: Attempt 2 node cluster scale down
-          when: inventory_hostname in _hosts2
-          block:
-            - name: Attempt 2 node cluster scale down
-              ansible.builtin.include_role:
-                name: pokerops.mongodb
-              vars:
-                _map_format: 'nephelaiio.plugins.map_format'
-                _addr_attrs: ['ansible_default_ipv4', 'address']
-                _addresses: "{{ _hosts2 | map('extract', hostvars, _addr_attrs) }}"
-                _members: "{{ _addresses | list }}"
-                mongodb_replicaset_members: "{{ _members | map(_map_format, '%s:' + mongodb_port) | list }}"
-                mongodb_votes_group: "_replicaset_votes_two"
-                mongodb_non_votes_group: "_replicaset_non_votes_two"
-                mongodb_voting_group: "_replicaset_voting_two"
-                mongodb_priority_group: "_replicaset_priority_two"
-                mongodb_non_priority_group: "_replicaset_non_priority_two"
-                mongodb_compliant_group: "_replicaset_compliant_two"
-                mongodb_non_compliant_group: "_replicaset_non_compliant_two"
-                mongodb_non_voting_group: "_replicaset_non_voting_two"
-                mongodb_alien_group: "_replicaset_alien_two"
-                mongodb_non_alien_group: "_replicaset_non_alien_two"
-                mongodb_member_group: "_replicaset_member_two"
-                mongodb_failed_group: "_replicaset_failed_two"
           rescue:
             - name: Set result facts
               ansible.builtin.set_fact:
-                _reconfigure2_failed: true
+                _reconfigure3_failed: true
           always:
             - name: Fail on broken replicaset member configuration
               ansible.builtin.assert:
-                that: _reconfigure2_failed | bool
+                that: _reconfigure3_failed | bool
                 fail_msg: "broken replicaset member configuration operation must fail"
 
-        - name: Attempt 1 node cluster scale in
+        - name: Attempt 1 node cluster scale down
           when: inventory_hostname in _hosts1
           block:
             - name: Attempt 1 node cluster scale in

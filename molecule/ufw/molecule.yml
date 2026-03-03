@@ -58,7 +58,6 @@ provisioner:
         vars:
           mongodb_replicaset_name: test
           mongodb_firewall_state: stopped
-          mongodb_repo_gpg_version: 8.0
 verifier:
   name: ansible
 scenario:
