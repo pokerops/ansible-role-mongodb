@@ -59,6 +59,7 @@ provisioner:
           mongodb_packages:
             - mongodb-org
             - mongodb-mongosh
+          mongodb_repo_gpg_version: 8.0
 verifier:
   name: ansible
 scenario:

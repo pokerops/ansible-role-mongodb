@@ -125,6 +125,7 @@ provisioner:
           mongodb_replicaset_name: test
           mongodb_firewall_state: stopped
           mongodb_sharding_role: shardsvr
+          mongodb_repo_gpg_version: 8.0
         hosts:
           mongodb-votes-01:
             mongodb_votes: 1
