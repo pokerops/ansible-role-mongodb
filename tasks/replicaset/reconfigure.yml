@@ -93,14 +93,6 @@
         _votes: "{{ hostvars[_member_filter]['_mongodb_votes'] }}"
         _update_member: "{{ {'host': item, 'hidden': false, 'votes': _votes | int, 'priority': _priority | float} }}"
 
-- name: Drop stale member from MongoDB replicaset
-  community.mongodb.mongodb_replicaset:
-    replica_set: "{{ mongodb_replicaset_name }}"
-    members: "{{ _existing_members | rejectattr('host', 'equalto', item) }}"
-    reconfigure: true
-    validate: false
-  when: _remove_member | default('false') | bool
-
 - name: Wait for replicaset to stabilize
   community.mongodb.mongodb_status:
     replica_set: "{{ mongodb_replicaset_name }}"
@@ -112,3 +104,12 @@
   register: mongodb_status
   until: mongodb_status is succeeded
   changed_when: false
+  when: not _remove_member | default('false') | bool
+
+- name: Drop stale member from MongoDB replicaset
+  community.mongodb.mongodb_replicaset:
+    replica_set: "{{ mongodb_replicaset_name }}"
+    members: "{{ _existing_members | rejectattr('host', 'equalto', item) }}"
+    reconfigure: true
+    validate: false
+  when: _remove_member | default('false') | bool

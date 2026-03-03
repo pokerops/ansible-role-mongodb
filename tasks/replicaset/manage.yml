@@ -175,23 +175,35 @@
       when:
         - mongodb_replicaset_init | bool
         - replicaset_members | length > 0
-        - replicaset_is_primary | bool
         - mongodb_replicaset_update | bool
       block:
-        - name: Query existing MongoDB replicaset config
-          community.mongodb.mongodb_shell:
-            eval: "rs.conf().members"
-            mongo_cmd: "{{ mongodb_shell | default(omit) }}"
-          retries: "{{ mongodb_query_retries }}"
-          delay: "{{ mongodb_query_delay }}"
-          register: mongodb_config
-          until: mongodb_config is succeeded
-          changed_when: false
+        - name: Manage primary tasks
+          when: replicaset_is_primary | bool
+          block:
+            - name: Query existing MongoDB replicaset config
+              community.mongodb.mongodb_shell:
+                eval: "rs.conf().members"
+                mongo_cmd: "{{ mongodb_shell | default(omit) }}"
+              retries: "{{ mongodb_query_retries }}"
+              delay: "{{ mongodb_query_delay }}"
+              register: mongodb_config
+              until: mongodb_config is succeeded
+              changed_when: false
+
+            - name: Set MongoDB existing config fact
+              ansible.builtin.set_fact:
+                _mongodb_config: "{{ mongodb_config.transformed_output }}"
+              delegate_facts: true
+              delegate_to: localhost
+
+        - name: Set MongoDB existing config fact across members
+          ansible.builtin.set_fact:
+            _mongodb_config: "{{ hostvars['localhost']['_mongodb_config'] }}"
 
         - name: Compute MongoDB replicaset member facts
           ansible.builtin.include_tasks: members.yml
           vars:
-            _existing_members_list: "{{ mongodb_config.transformed_output | map(attribute='host') }}"
+            _existing_members_list: "{{ _mongodb_config | map(attribute='host') }}"
             _target_members: "{{ _existing_members_list }}"
 
         - name: Detect new cluster members
@@ -209,14 +221,14 @@
           ansible.builtin.set_fact:
             _mongodb_delete_members: "{{ _delete_members }}"
           vars:
-            _existing_members_list: "{{ mongodb_config.transformed_output | map(attribute='host') }}"
+            _existing_members_list: "{{ _mongodb_config | map(attribute='host') }}"
             _delete_members: "{{ _existing_members_list | reject('in', _target_hostaddrs) }}"
 
         - name: Detect new voting and priorities
           ansible.builtin.set_fact:
             _mongodb_existing_members: "{{ _non_voting_filter if _max_voting_count else _voting_filter }}"
           vars:
-            _existing_members_list: "{{ mongodb_config.transformed_output }}"
+            _existing_members_list: "{{ _mongodb_config }}"
             _member_names: "{{ _existing_members_list | map(attribute='host') }}"
             _hosts_filter: "{{ mongodb_replicaset_members | select('in', _member_names) }}"
             _hosts: "[{{ _hosts_filter | map(_map_format, _hosts_format) | join(',') }}]"
@@ -230,75 +242,83 @@
             _non_voting_filter: "{{ _non_voting_members | zip_longest(_voting_members) | flatten | map(attribute='host') }}"
             _voting_filter: "{{ _voting_members | zip_longest(_non_voting_members) | flatten | map(attribute='host') }}"
 
-        - name: Debug target members
-          ansible.builtin.debug:
-            msg: "Target members are [{{ mongodb_replicaset_members | join(',') }}]"
+        - name: Verify MongoDB stale members to remove
+          ansible.builtin.assert:
+            that: _mongodb_delete_members | length <= 1
+            fail_msg: "Replicaset members to remove should be one by one"
 
-        - name: Debug cluster facts
-          ansible.builtin.debug:
-            msg: "Detected cluster members [{{ _existing_members_list | join(',') }}]"
-          vars:
-            _existing_members_list: "{{ mongodb_config.transformed_output | map(attribute='host') }}"
-
-        - name: Debug new cluster members
-          ansible.builtin.debug:
-            msg: "Adding cluster members [{{ _mongodb_add_members | join(',') }}]"
-
-        - name: Debug stale cluster members
-          ansible.builtin.debug:
-            msg: "Removing cluster members [{{ _mongodb_delete_members | join(',') }}]"
-
-        - name: Debug existing votes and priorities
-          ansible.builtin.debug:
-            msg: "{{ _existing_members_list | map(_select_attrs, _attrs) }}"
-          vars:
-            _existing_members_list: "{{ mongodb_config.transformed_output }}"
-            _attrs:
-              - "host"
-              - "votes"
-              - "priority"
-
-        - name: Debug new votes and priorities
-          ansible.builtin.debug:
-            msg: "{{ _new_votes }}"
-          vars:
-            _hosts: "{{ _mongodb_hosts }}"
-            _host_members: "[{{ mongodb_replicaset_members | map(_map_format, _host_format) | join(',') }}]"
-            _host_format: '{ "host": "%s" }'
-            _priorities: "[{{ _hosts | map('extract', hostvars, ['_mongodb_priority']) | map(_map_format, _priority_format) | join(',') }}]"
-            _priority_format: '{ "priority": "%s" }'
-            _votes_format: '{ "votes": "%s" }'
-            _votes: "[{{ _hosts | map('extract', hostvars, ['_mongodb_votes']) | map(_map_format, _votes_format) | join(',') }}]"
-            _new_votes: "{{ _host_members | zip(_votes, _priorities) | map('combine') }}"
-
-        - name: Manage existing MongoDB replicaset members
-          ansible.builtin.include_tasks: "reconfigure.yml"
-          vars:
-            _existing_member: true
-          loop: "{{ _mongodb_existing_members }}"
-
-        - name: Manage MongoDB replicaset members
-          when: (_mongodb_add_members + _mongodb_delete_members) | length > 0
+        - name: Manage primary tasks
+          when: replicaset_is_primary | bool
           block:
-            - name: Gather MongoDB version
-              community.mongodb.mongodb_info:
-                filter: general
-              changed_when: false
-              register: mongodb_installed_version
+            - name: Debug target members
+              ansible.builtin.debug:
+                msg: "Target members are [{{ mongodb_replicaset_members | join(',') }}]"
 
-            - name: Add new MongoDB replicaset members
-              ansible.builtin.include_tasks: "reconfigure.yml"
+            - name: Debug cluster facts
+              ansible.builtin.debug:
+                msg: "Detected cluster members [{{ _existing_members_list | join(',') }}]"
               vars:
-                _add_member: true
-                _mongodb_info: "{{ mongodb_installed_version.general }}"
-                _mongodb_version: "{{ _mongodb_info.version }}"
-              loop: "{{ _mongodb_add_members }}"
+                _existing_members_list: "{{ _mongodb_config | map(attribute='host') }}"
+
+            - name: Debug new cluster members
+              ansible.builtin.debug:
+                msg: "Adding cluster members [{{ _mongodb_add_members | join(',') }}]"
+
+            - name: Debug stale cluster members
+              ansible.builtin.debug:
+                msg: "Removing cluster members [{{ _mongodb_delete_members | join(',') }}]"
+
+            - name: Debug existing votes and priorities
+              ansible.builtin.debug:
+                msg: "{{ _existing_members_list | map(_select_attrs, _attrs) }}"
+              vars:
+                _existing_members_list: "{{ _mongodb_config }}"
+                _attrs:
+                  - "host"
+                  - "votes"
+                  - "priority"
+
+            - name: Debug new votes and priorities
+              ansible.builtin.debug:
+                msg: "{{ _new_votes }}"
+              vars:
+                _hosts: "{{ _mongodb_hosts }}"
+                _host_members: "[{{ mongodb_replicaset_members | map(_map_format, _host_format) | join(',') }}]"
+                _host_format: '{ "host": "%s" }'
+                _priorities: "[{{ _hosts | map('extract', hostvars, ['_mongodb_priority']) | map(_map_format, _priority_format) | join(',') }}]"
+                _priority_format: '{ "priority": "%s" }'
+                _votes_format: '{ "votes": "%s" }'
+                _votes: "[{{ _hosts | map('extract', hostvars, ['_mongodb_votes']) | map(_map_format, _votes_format) | join(',') }}]"
+                _new_votes: "{{ _host_members | zip(_votes, _priorities) | map('combine') }}"
 
             - name: Remove stale MongoDB replicaset members
               ansible.builtin.include_tasks: "reconfigure.yml"
               vars:
                 _remove_member: true
               loop: "{{ _mongodb_delete_members }}"
+
+            - name: Manage existing MongoDB replicaset members
+              ansible.builtin.include_tasks: "reconfigure.yml"
+              vars:
+                _existing_member: true
+              loop: "{{ _mongodb_existing_members }}"
+
+            - name: Manage MongoDB replicaset members
+              when: _mongodb_add_members | length > 0
+              block:
+                - name: Gather MongoDB version
+                  community.mongodb.mongodb_info:
+                    filter: general
+                  changed_when: false
+                  register: mongodb_installed_version
+
+                - name: Add new MongoDB replicaset members
+                  ansible.builtin.include_tasks: "reconfigure.yml"
+                  vars:
+                    _add_member: true
+                    _mongodb_info: "{{ mongodb_installed_version.general }}"
+                    _mongodb_version: "{{ _mongodb_info.version }}"
+                  loop: "{{ _mongodb_add_members }}"
 
     - name: Allow read operations on secondary replicaset members
       community.mongodb.mongodb_shell:

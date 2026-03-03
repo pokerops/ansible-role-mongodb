@@ -10,3 +10,4 @@ roles/
 .devbox/
 .venv/
 .vscode/
+.DS_Store
