@@ -175,7 +175,6 @@
       when:
         - mongodb_replicaset_init | bool
         - replicaset_members | length > 0
-        - replicaset_is_primary | bool
         - mongodb_replicaset_update | bool
       block:
         - name: Query existing MongoDB replicaset config
@@ -276,34 +275,37 @@
             that: _mongodb_delete_members | length <= 1
             fail_msg: "Replicaset members to remove should be one by one"
 
-        - name: Remove stale MongoDB replicaset members
-          ansible.builtin.include_tasks: "reconfigure.yml"
-          vars:
-            _remove_member: true
-          loop: "{{ _mongodb_delete_members }}"
-
-        - name: Manage existing MongoDB replicaset members
-          ansible.builtin.include_tasks: "reconfigure.yml"
-          vars:
-            _existing_member: true
-          loop: "{{ _mongodb_existing_members }}"
-
-        - name: Manage MongoDB replicaset members
-          when: _mongodb_add_members | length > 0
+        - name: Manage primary tasks
+          when: replicaset_is_primary | bool
           block:
-            - name: Gather MongoDB version
-              community.mongodb.mongodb_info:
-                filter: general
-              changed_when: false
-              register: mongodb_installed_version
-
-            - name: Add new MongoDB replicaset members
+            - name: Remove stale MongoDB replicaset members
               ansible.builtin.include_tasks: "reconfigure.yml"
               vars:
-                _add_member: true
-                _mongodb_info: "{{ mongodb_installed_version.general }}"
-                _mongodb_version: "{{ _mongodb_info.version }}"
-              loop: "{{ _mongodb_add_members }}"
+                _remove_member: true
+              loop: "{{ _mongodb_delete_members }}"
+
+            - name: Manage existing MongoDB replicaset members
+              ansible.builtin.include_tasks: "reconfigure.yml"
+              vars:
+                _existing_member: true
+              loop: "{{ _mongodb_existing_members }}"
+
+            - name: Manage MongoDB replicaset members
+              when: _mongodb_add_members | length > 0
+              block:
+                - name: Gather MongoDB version
+                  community.mongodb.mongodb_info:
+                    filter: general
+                  changed_when: false
+                  register: mongodb_installed_version
+
+                - name: Add new MongoDB replicaset members
+                  ansible.builtin.include_tasks: "reconfigure.yml"
+                  vars:
+                    _add_member: true
+                    _mongodb_info: "{{ mongodb_installed_version.general }}"
+                    _mongodb_version: "{{ _mongodb_info.version }}"
+                  loop: "{{ _mongodb_add_members }}"
 
     - name: Allow read operations on secondary replicaset members
       community.mongodb.mongodb_shell:
