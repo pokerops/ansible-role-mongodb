@@ -79,7 +79,6 @@
       delay: "{{ mongodb_install_delay }}"
       register: mongodb_install
       until: mongodb_install is succeeded
-      notify: Restart MongoDB
 
   always:
     - name: Configure package holds
