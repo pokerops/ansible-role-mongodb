@@ -23,8 +23,8 @@
         mongodb_replicaset_members: "{{ _rs_members | map(map_format, '%s:' + _port) | list }}"
       vars:
         _rs_addresses: "{{ play_hosts | map('extract', hostvars, addr_attrs) }}"
-        addr_attrs: ['ansible_default_ipv4', 'address']
-        map_format: 'nephelaiio.plugins.map_format'
+        addr_attrs: ["ansible_default_ipv4", "address"]
+        map_format: "nephelaiio.plugins.map_format"
         _rs_members: "{{ _rs_addresses | list }}"
         _port: "{{ mongodb_port | default('27017') }}"
 
@@ -530,20 +530,25 @@
 
         - name: Attempt block primary voting member
           block:
-            - name: Set voting facts
-              ansible.builtin.set_fact:
-                mongodb_votes: "{{ _votes }}"
-                mongodb_priority: "{{ _priority }}"
-              vars:
-                _votes: "{{ 1 if not inventory_hostname in _non_voting_4 else 0 }}"
-                _priority: "{{ 1 if not inventory_hostname in _non_voting_4 else 0 }}"
-
             - name: Query replicaset membership
               community.mongodb.mongodb_shell:
                 eval: "rs.isMaster()"
               register: mongodb_rs
               until: mongodb_rs is succeeded
               changed_when: false
+
+            - name: Set voting facts
+              ansible.builtin.set_fact:
+                mongodb_votes: "{{ _votes }}"
+                mongodb_priority: "{{ _priority }}"
+              vars:
+                _primary: "{{ mongodb_rs.transformed_output.primary | split(':') | first }}"
+                _hosts: "{{ play_hosts }}"
+                _revaddrs: "{{ _host_addrs | zip(_hosts) | community.general.dict }}"
+                _host_addrs: "{{ _hosts | map('extract', hostvars, ['ansible_default_ipv4', 'address']) }}"
+                _primary_host: "{{ inventory_hostname == _revaddrs[_primary] }}"
+                _votes: "{{ 1 if (not inventory_hostname in _non_voting_3 or _primary_host) else 0 }}"
+                _priority: "{{ 1 if (not inventory_hostname in _non_voting_3 or _primary_host) else 0 }}"
 
             - name: Set replicaset primary facts
               ansible.builtin.set_fact:
