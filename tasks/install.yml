@@ -96,6 +96,9 @@
         owner: "{{ _mongodb_user }}"
         group: "{{ _mongodb_group }}"
         mode: "u=rw,go=r"
+      vars:
+        _votes: "{{ mongodb_votes | default(1) }}"
+        _initial_sync: "{{ 'primaryPreferred' if (_votes | int == 1) else 'secondary' }}"
       notify: Restart MongoDB
       register: config_manage
 

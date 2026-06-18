@@ -12,6 +12,8 @@ storage:
     commitIntervalMs: 100
 replication:
   replSetName: {{ mongodb_replicaset_name }}
+setParameter:
+  initialSyncSourceReadPreference: "{{ _initial_sync }}"
 {% if mongodb_sharding_role != '' %}
 sharding:
   clusterRole: "{{ mongodb_sharding_role }}"
