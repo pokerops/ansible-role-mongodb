@@ -14,6 +14,14 @@
   vars:
     _is_primary: "{{ mongodb_rs.transformed_output.ismaster | bool }}"
 
+- name: Verify replicaset primary member status
+  ansible.builtin.assert:
+    that: _primaries | select('equalto', 'true') | length == 1
+    fail_msg: "There must be one replicaset primary member"
+  vars:
+    _hosts: "{{ ansible_play_hosts }}"
+    _primaries: "{{ _hosts | map('extract', hostvars) | map(attribute='replicaset_is_primary') }}"
+
 - name: Compute replicaset primary member
   ansible.builtin.set_fact:
     replicaset_primary: "{{ _revaddrs[_primary] if _primary not in _hosts else _primary }}"
