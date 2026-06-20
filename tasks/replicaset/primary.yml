@@ -16,7 +16,7 @@
 
 - name: Verify replicaset primary member status
   ansible.builtin.assert:
-    that: _primaries | select('equalto', 'true') | length > 0
+    that: _primaries | select('equalto', true) | length > 0
     fail_msg: "There must be at least one replicaset primary member"
   vars:
     _hosts: "{{ ansible_play_hosts }}"
