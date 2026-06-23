@@ -19,7 +19,7 @@
     that: _primaries | select('equalto', true) | length > 0
     fail_msg: "There must be at least one replicaset primary member"
   vars:
-    _primaries: "{{ replicaset_members | map('extract', hostvars) | map(attribute='replicaset_is_primary') }}"
+    _primaries: "{{ _mongodb_hosts | map('extract', hostvars) | map(attribute='replicaset_is_primary') }}"
 
 - name: Compute replicaset primary member
   ansible.builtin.set_fact:
