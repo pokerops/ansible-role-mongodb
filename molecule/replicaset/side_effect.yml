@@ -3,13 +3,13 @@
   hosts: all
   any_errors_fatal: true
   vars:
-    _hosts1: "{{ play_hosts[:1] }}"
-    _hosts2: "{{ play_hosts[:2] }}"
-    _hosts3: "{{ play_hosts[-3:] }}"
-    _hosts4: "{{ play_hosts[:1] + play_hosts[-3:] }}"
-    _hosts5: "{{ play_hosts[:2] + play_hosts[-3:] }}"
-    _hosts6: "{{ play_hosts[:3] + play_hosts[-3:] }}"
-    _hosts7: "{{ play_hosts[:7] }}"
+    _hosts1: "{{ ansible_play_batch[:1] }}"
+    _hosts2: "{{ ansible_play_batch[:2] }}"
+    _hosts3: "{{ ansible_play_batch[-3:] }}"
+    _hosts4: "{{ ansible_play_batch[:1] + ansible_play_batch[-3:] }}"
+    _hosts5: "{{ ansible_play_batch[:2] + ansible_play_batch[-3:] }}"
+    _hosts6: "{{ ansible_play_batch[:3] + ansible_play_batch[-3:] }}"
+    _hosts7: "{{ ansible_play_batch[:7] }}"
   tasks:
     - name: Manage python interpreter
       tags: always
@@ -41,6 +41,12 @@
           ansible.builtin.set_fact:
             ansible_python_interpreter: "{{ _virtualenv_tmpdir.path }}/venv/bin/python"
 
+        - name: Set MongoDB default facts
+          ansible.builtin.set_fact:
+            _map_format: "nephelaiio.plugins.map_format"
+            _addr_attrs: ["ansible_facts", "default_ipv4", "address"]
+            _port: "{{ mongodb_port | default('27017') }}"
+
     - name: Test replicaset reconfiguration scenarios
       block:
         - name: Deploy 3 node cluster
@@ -50,9 +56,6 @@
               ansible.builtin.set_fact:
                 _config_members: "{{ _members | map(_map_format, '%s:' + _port) | list }}"
               vars:
-                _port: "{{ mongodb_port | default('27017') }}"
-                _map_format: 'nephelaiio.plugins.map_format'
-                _addr_attrs: ['ansible_default_ipv4', 'address']
                 _addresses: "{{ _hosts3 | map('extract', hostvars, _addr_attrs) }}"
                 _members: "{{ _addresses | list }}"
               delegate_to: localhost
@@ -111,9 +114,6 @@
               ansible.builtin.set_fact:
                 _config_members: "{{ _members | map(_map_format, '%s:' + _port) | list }}"
               vars:
-                _port: "{{ mongodb_port | default('27017') }}"
-                _map_format: 'nephelaiio.plugins.map_format'
-                _addr_attrs: ['ansible_default_ipv4', 'address']
                 _addresses: "{{ _hosts4 | map('extract', hostvars, _addr_attrs) }}"
                 _members: "{{ _addresses | list }}"
               delegate_to: localhost
@@ -172,9 +172,6 @@
               ansible.builtin.set_fact:
                 _config_members: "{{ _members | map(_map_format, '%s:' + _port) | list }}"
               vars:
-                _port: "{{ mongodb_port | default('27017') }}"
-                _map_format: 'nephelaiio.plugins.map_format'
-                _addr_attrs: ['ansible_default_ipv4', 'address']
                 _addresses: "{{ _hosts5 | map('extract', hostvars, _addr_attrs) }}"
                 _members: "{{ _addresses | list }}"
               delegate_to: localhost
@@ -233,9 +230,6 @@
               ansible.builtin.set_fact:
                 _config_members: "{{ _members | map(_map_format, '%s:' + _port) | list }}"
               vars:
-                _port: "{{ mongodb_port | default('27017') }}"
-                _map_format: 'nephelaiio.plugins.map_format'
-                _addr_attrs: ['ansible_default_ipv4', 'address']
                 _addresses: "{{ _hosts7 | map('extract', hostvars, _addr_attrs) }}"
                 _members: "{{ _addresses | list }}"
               delegate_to: localhost
@@ -294,9 +288,6 @@
               ansible.builtin.set_fact:
                 _config_members: "{{ _members | map(_map_format, '%s:' + _port) | list }}"
               vars:
-                _port: "{{ mongodb_port | default('27017') }}"
-                _map_format: 'nephelaiio.plugins.map_format'
-                _addr_attrs: ['ansible_default_ipv4', 'address']
                 _addresses: "{{ _hosts6 | map('extract', hostvars, _addr_attrs) }}"
                 _members: "{{ _addresses | list }}"
               delegate_to: localhost
@@ -355,9 +346,6 @@
               ansible.builtin.set_fact:
                 _config_members: "{{ _members | map(_map_format, '%s:' + _port) | list }}"
               vars:
-                _port: "{{ mongodb_port | default('27017') }}"
-                _map_format: 'nephelaiio.plugins.map_format'
-                _addr_attrs: ['ansible_default_ipv4', 'address']
                 _addresses: "{{ _hosts5 | map('extract', hostvars, _addr_attrs) }}"
                 _members: "{{ _addresses | list }}"
               delegate_to: localhost
@@ -416,9 +404,6 @@
               ansible.builtin.set_fact:
                 _config_members: "{{ _members | map(_map_format, '%s:' + _port) | list }}"
               vars:
-                _port: "{{ mongodb_port | default('27017') }}"
-                _map_format: 'nephelaiio.plugins.map_format'
-                _addr_attrs: ['ansible_default_ipv4', 'address']
                 _addresses: "{{ _hosts3 | map('extract', hostvars, _addr_attrs) }}"
                 _members: "{{ _addresses | list }}"
               delegate_to: localhost
@@ -459,8 +444,6 @@
               ansible.builtin.include_role:
                 name: pokerops.mongodb
               vars:
-                _map_format: 'nephelaiio.plugins.map_format'
-                _addr_attrs: ['ansible_default_ipv4', 'address']
                 _addresses: "{{ _hosts1 | map('extract', hostvars, _addr_attrs) }}"
                 _members: "{{ _addresses | list }}"
                 mongodb_replicaset_members: "{{ _members | map(_map_format, '%s:' + mongodb_port) | list }}"

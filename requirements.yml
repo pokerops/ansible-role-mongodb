@@ -1,9 +1,7 @@
 ---
-roles:
-  - name: nephelaiio.mongodb_repo
-  - name: robertdebock.update
+roles: []
 collections:
-  - nephelaiio.plugins
-  - community.general
-  - community.mongodb
-  - ansible.utils
+  - name: nephelaiio.plugins
+  - name: community.general
+  - name: community.mongodb
+  - name: ansible.utils
