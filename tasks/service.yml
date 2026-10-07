@@ -1,5 +1,6 @@
 ---
 - name: Manage MongoDB services
+  delegate_to: "{{ item }}"
   block:
     - name: Manage MongoDB service
       ansible.builtin.service:

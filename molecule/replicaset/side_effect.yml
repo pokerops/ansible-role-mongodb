@@ -65,6 +65,7 @@
               ansible.builtin.include_role:
                 name: pokerops.mongodb
               vars:
+                mongodb_replicaset_hosts: "{{ _hosts3 }}"
                 mongodb_replicaset_members: "{{ hostvars['localhost']['_config_members'] }}"
                 mongodb_votes_group: "_replicaset_votes_out_three"
                 mongodb_non_votes_group: "_replicaset_non_votes_out_three"
@@ -123,6 +124,7 @@
               ansible.builtin.include_role:
                 name: pokerops.mongodb
               vars:
+                mongodb_replicaset_hosts: "{{ _hosts4 }}"
                 mongodb_replicaset_members: "{{ hostvars['localhost']['_config_members'] }}"
                 mongodb_votes_group: "_replicaset_votes_out_four"
                 mongodb_non_votes_group: "_replicaset_non_votes_out_four"
@@ -181,6 +183,7 @@
               ansible.builtin.include_role:
                 name: pokerops.mongodb
               vars:
+                mongodb_replicaset_hosts: "{{ _hosts5 }}"
                 mongodb_replicaset_members: "{{ hostvars['localhost']['_config_members'] }}"
                 mongodb_votes_group: "_replicaset_votes_out_five"
                 mongodb_non_votes_group: "_replicaset_non_votes_out_five"
@@ -239,6 +242,7 @@
               ansible.builtin.include_role:
                 name: pokerops.mongodb
               vars:
+                mongodb_replicaset_hosts: "{{ _hosts7 }}"
                 mongodb_replicaset_members: "{{ hostvars['localhost']['_config_members'] }}"
                 mongodb_votes_group: "_replicaset_votes_out_seven"
                 mongodb_non_votes_group: "_replicaset_non_votes_out_seven"
@@ -297,6 +301,7 @@
               ansible.builtin.include_role:
                 name: pokerops.mongodb
               vars:
+                mongodb_replicaset_hosts: "{{ _hosts6 }}"
                 mongodb_replicaset_members: "{{ hostvars['localhost']['_config_members'] }}"
                 mongodb_votes_group: "_replicaset_votes_in_six"
                 mongodb_non_votes_group: "_replicaset_non_votes_in_six"
@@ -355,6 +360,7 @@
               ansible.builtin.include_role:
                 name: pokerops.mongodb
               vars:
+                mongodb_replicaset_hosts: "{{ _hosts5 }}"
                 mongodb_replicaset_members: "{{ hostvars['localhost']['_config_members'] }}"
                 mongodb_votes_group: "_replicaset_votes_in_five"
                 mongodb_non_votes_group: "_replicaset_non_votes_in_five"
@@ -413,6 +419,7 @@
               ansible.builtin.include_role:
                 name: pokerops.mongodb
               vars:
+                mongodb_replicaset_hosts: "{{ _hosts3 }}"
                 mongodb_replicaset_members: "{{ hostvars['localhost']['_config_members'] }}"
                 mongodb_votes_group: "_replicaset_votes_in_three"
                 mongodb_non_votes_group: "_replicaset_non_votes_in_three"
@@ -446,6 +453,7 @@
               vars:
                 _addresses: "{{ _hosts1 | map('extract', hostvars, _addr_attrs) }}"
                 _members: "{{ _addresses | list }}"
+                mongodb_replicaset_hosts: "{{ _hosts1 }}"
                 mongodb_replicaset_members: "{{ _members | map(_map_format, '%s:' + mongodb_port) | list }}"
                 mongodb_votes_group: "_replicaset_votes_in_one"
                 mongodb_non_votes_group: "_replicaset_non_votes_in_one"

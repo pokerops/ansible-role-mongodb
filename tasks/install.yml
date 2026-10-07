@@ -175,4 +175,5 @@
 
 - name: Include service tasks
   ansible.builtin.include_tasks: service.yml
-  loop: "{{ mongodb_replicaset_members }}"
+  loop: "{{ mongodb_replicaset_hosts | default(ansible_play_batch) }}"
+  run_once: true
