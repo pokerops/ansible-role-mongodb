@@ -24,6 +24,10 @@
         virtualenv: "{{ _virtualenv_tmpdir.path }}/venv"
       changed_when: false
 
+    - name: Record python interpreter
+      ansible.builtin.set_fact:
+        _environment_python: "{{ ansible_facts.python.executable }}"
+
     - name: Change python interpreter
       ansible.builtin.set_fact:
         ansible_python_interpreter: "{{ _virtualenv_tmpdir.path }}/venv/bin/python"
@@ -81,6 +85,10 @@
           register: mongodb_shell_output
           until: mongodb_shell_output is succeeded
       always:
+        - name: Restore python interpreter
+          ansible.builtin.set_fact:
+            ansible_python_interpreter: "{{ _environment_python }}"
+
         - name: Destroy virtualenv
           ansible.builtin.file:
             path: "{{ _virtualenv_tmpdir.path }}"

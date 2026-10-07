@@ -44,6 +44,10 @@
         virtualenv: "{{ _virtualenv_tmpdir.path }}/venv"
       changed_when: false
 
+    - name: Record python interpreter
+      ansible.builtin.set_fact:
+        _environment_python: "{{ ansible_facts.python.executable }}"
+
     - name: Change python interpreter
       ansible.builtin.set_fact:
         ansible_python_interpreter: "{{ _virtualenv_tmpdir.path }}/venv/bin/python"
@@ -527,3 +531,14 @@
                 _addresses: "{{ _non_voting_3 | map('extract', hostvars, _addr_attrs) }}"
                 _members: "{{ _non_voters | map(attribute='host') }}"
                 _members_list: "{{ _members | map('split', ':') | map('first') }}"
+
+      always:
+        - name: Restore python interpreter
+          ansible.builtin.set_fact:
+            ansible_python_interpreter: "{{ _environment_python }}"
+
+        - name: Destroy virtualenv
+          ansible.builtin.file:
+            path: "{{ _virtualenv_tmpdir.path }}"
+            state: absent
+          changed_when: false
