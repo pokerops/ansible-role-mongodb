@@ -16,7 +16,7 @@
   ansible.builtin.set_fact:
     _existing_members: "{{ _members_list }}"
   vars:
-    _select_attrs: 'nephelaiio.plugins.select_attributes'
+    _select_attrs: "nephelaiio.plugins.select_attributes"
     _members_list: "{{ mongodb_config.transformed_output | map(_select_attrs, _attrs) | list }}"
     _attrs:
       - host
@@ -45,15 +45,14 @@
   when:
     - _existing_member | default('false') | bool
     - (_votes_query or _priority_query) or (_votes_query and _priority_query)
+  tags: skip_ansible_lint
 
 - name: Manage MongoDB new members
   when: _add_member | default('false') | bool
   block:
-
     - name: Add MongoDB new members as hidden
       when: _mongodb_version is version('5.0.0', '<')
       block:
-
         - name: Add new member to MongoDB replicaset
           community.mongodb.mongodb_replicaset:
             replica_set: "{{ mongodb_replicaset_name }}"

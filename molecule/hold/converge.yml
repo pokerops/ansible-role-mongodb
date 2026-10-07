@@ -29,6 +29,7 @@
       register: _debian_package_query
       when: ansible_facts.os_family == "Debian"
       changed_when: false
+      tags: skip_ansible_lint
 
     - name: Query RedHat package versions
       ansible.builtin.shell:
@@ -37,6 +38,7 @@
       register: _redhat_package_query
       when: ansible_facts.os_family == "RedHat"
       changed_when: false
+      tags: skip_ansible_lint
 
     - name: Set package version facts
       ansible.builtin.set_fact:

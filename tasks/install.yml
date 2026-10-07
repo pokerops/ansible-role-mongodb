@@ -138,6 +138,7 @@
                 _network: "{{ _ipv4.network }}"
                 _prefix: "{{ _ipv4.prefix }}"
                 _default_address: "{{ _network }}/{{ _prefix }}"
+              tags: skip_ansible_lint
 
             - name: Configure MongoDB firewall access
               community.general.ufw:
