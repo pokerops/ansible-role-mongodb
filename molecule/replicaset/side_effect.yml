@@ -68,9 +68,9 @@
             _running_hosts: "{{ _hosts if (_hosts_primary | length > 0) else _hosts_added }}"
           vars:
             _hosts: "{{ groups['_all'][:6] }}"
-            _group: "{{ groups['_primary6'] | default([]) }}"
-            _hosts_primary: "{{ _hosts | select('in', _group) }}"
-            _hosts_added: "{{ _hosts[:5] + [inventory_hostname] }}"
+            _primary: "{{ groups['_primary6'] | default([]) }}"
+            _hosts_primary: "{{ _hosts | select('in', _primary) }}"
+            _hosts_added: "{{ _hosts[:5] + _primary }}"
 
     - name: Test replicaset reconfiguration scenarios
       block:
@@ -156,9 +156,9 @@
             _running_hosts: "{{ _hosts if (_hosts_primary | length > 0) else _hosts_added }}"
           vars:
             _hosts: "{{ groups['_all'][:5] }}"
-            _group: "{{ groups['_primary5'] | default([]) }}"
-            _hosts_primary: "{{ _hosts | select('in', _group) }}"
-            _hosts_added: "{{ _hosts[:4] + [inventory_hostname] }}"
+            _primary: "{{ groups['_primary5'] | default([]) }}"
+            _hosts_primary: "{{ _hosts | select('in', _primary) }}"
+            _hosts_added: "{{ _hosts[:4] + _primary }}"
 
         - name: Scale down to 5 node cluster
           when: inventory_hostname in _running_hosts
@@ -242,9 +242,9 @@
             _running_hosts: "{{ _hosts if (_hosts_primary | length > 0) else _hosts_added }}"
           vars:
             _hosts: "{{ groups['_all'][:3] }}"
-            _group: "{{ groups['_primary3'] | default([]) }}"
-            _hosts_primary: "{{ _hosts | select('in', _group) }}"
-            _hosts_added: "{{ _hosts[:2] + [inventory_hostname] }}"
+            _primary: "{{ groups['_primary3'] | default([]) }}"
+            _hosts_primary: "{{ _hosts | select('in', _primary) }}"
+            _hosts_added: "{{ _hosts[:2] + _primary }}"
 
         - name: Attempt 3 node cluster scale down
           when: inventory_hostname in _running_hosts
@@ -262,7 +262,7 @@
               ansible.builtin.include_role:
                 name: pokerops.mongodb
               vars:
-                mongodb_replicaset_hosts: "{{_running_hosts }}"
+                mongodb_replicaset_hosts: "{{ _running_hosts }}"
                 mongodb_replicaset_members: "{{ hostvars['localhost']['_config_members'] }}"
                 mongodb_votes_group: "_replicaset_votes_in_three"
                 mongodb_non_votes_group: "_replicaset_non_votes_in_three"
@@ -307,10 +307,9 @@
 
         - name: Add current primary host to group
           ansible.builtin.set_fact:
-            _running_hosts: "{{ _hosts }}"
+            _running_hosts: "{{ _primary }}"
           vars:
-            _group: "{{ groups['_primary1'] | default([]) }}"
-            _hosts: "{{ _hosts | select('in', _group) }}"
+            _primary: "{{ groups['_primary1'] | default([]) }}"
 
         - name: Attempt 1 node cluster scale down
           when: inventory_hostname in _running_hosts
