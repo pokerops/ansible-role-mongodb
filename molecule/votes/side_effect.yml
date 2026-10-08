@@ -15,14 +15,14 @@
         _string_votes_failed: false
         _map_format: "{{ map_format }}"
         _addr_attrs: "{{ addr_attrs }}"
-        _non_voting_1: "{{ ansible_play_batch[:1] }}"
-        _non_voting_3: "{{ ansible_play_batch[:3] }}"
-        _non_voting_4: "{{ ansible_play_batch[-4:] }}"
-        _non_voting_6: "{{ ansible_play_batch[-6:] }}"
+        _non_voting_1: "{{ ansible_play_hosts[:1] }}"
+        _non_voting_3: "{{ ansible_play_hosts[:3] }}"
+        _non_voting_4: "{{ ansible_play_hosts[-4:] }}"
+        _non_voting_6: "{{ ansible_play_hosts[-6:] }}"
         _mongodb_port: "{{ _port }}"
         mongodb_replicaset_members: "{{ _rs_members | map(map_format, '%s:' + _port) | list }}"
       vars:
-        _rs_addresses: "{{ ansible_play_batch | map('extract', hostvars, addr_attrs) }}"
+        _rs_addresses: "{{ ansible_play_hosts | map('extract', hostvars, addr_attrs) }}"
         addr_attrs: ["ansible_facts", "default_ipv4", "address"]
         map_format: "nephelaiio.plugins.map_format"
         _rs_members: "{{ _rs_addresses | list }}"
@@ -76,7 +76,7 @@
                 replicaset_primary_before: "{{ _primary_host }}"
               vars:
                 _primary: "{{ mongodb_rs.transformed_output.primary | split(':') | first }}"
-                _hosts: "{{ ansible_play_batch }}"
+                _hosts: "{{ ansible_play_hosts }}"
                 _revaddrs: "{{ _host_addrs | zip(_hosts) | community.general.dict }}"
                 _host_addrs: "{{ _hosts | map('extract', hostvars, _addr_attrs) }}"
                 _primary_host: "{{ _revaddrs[_primary] }}"
@@ -139,7 +139,7 @@
                 replicaset_primary_after: "{{ _primary_host }}"
               vars:
                 _primary: "{{ mongodb_rs.transformed_output.primary | split(':') | first }}"
-                _hosts: "{{ ansible_play_batch }}"
+                _hosts: "{{ ansible_play_hosts }}"
                 _revaddrs: "{{ _host_addrs | zip(_hosts) | community.general.dict }}"
                 _host_addrs: "{{ _hosts | map('extract', hostvars, _addr_attrs) }}"
                 _primary_host: "{{ _revaddrs[_primary] }}"
@@ -171,7 +171,7 @@
                 mongodb_priority: "{{ _priority }}"
               vars:
                 _primary: "{{ mongodb_rs.transformed_output.primary | split(':') | first }}"
-                _hosts: "{{ ansible_play_batch }}"
+                _hosts: "{{ ansible_play_hosts }}"
                 _revaddrs: "{{ _host_addrs | zip(_hosts) | community.general.dict }}"
                 _host_addrs: "{{ _hosts | map('extract', hostvars, _addr_attrs) }}"
                 _primary_host: "{{ inventory_hostname == _revaddrs[_primary] }}"
@@ -273,7 +273,7 @@
                 mongodb_priority: "{{ _priority }}"
               vars:
                 _primary: "{{ mongodb_rs.transformed_output.primary | split(':') | first }}"
-                _hosts: "{{ ansible_play_batch }}"
+                _hosts: "{{ ansible_play_hosts }}"
                 _revaddrs: "{{ _host_addrs | zip(_hosts) | community.general.dict }}"
                 _host_addrs: "{{ _hosts | map('extract', hostvars, _addr_attrs) }}"
                 _primary_host: "{{ inventory_hostname == _revaddrs[_primary] }}"
@@ -481,7 +481,7 @@
                 mongodb_priority: "{{ _priority }}"
               vars:
                 _primary: "{{ mongodb_rs.transformed_output.primary | split(':') | first }}"
-                _hosts: "{{ ansible_play_batch }}"
+                _hosts: "{{ ansible_play_hosts }}"
                 _revaddrs: "{{ _host_addrs | zip(_hosts) | community.general.dict }}"
                 _host_addrs: "{{ _hosts | map('extract', hostvars, _addr_attrs) }}"
                 _primary_host: "{{ inventory_hostname == _revaddrs[_primary] }}"

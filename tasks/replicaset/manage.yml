@@ -92,11 +92,17 @@
         replicaset_non_priority: "{{ groups[_non_priority_group] | default([]) }}"
         replicaset_compliant: "{{ groups[_compliant_group] | default([]) }}"
 
+    - name: Verify MongoDB replicaset broken members status
+      ansible.builtin.assert:
+        that: _failures | length == 0
+        fail_msg: "MongoDB nodes cannot join to replicaset: {{ _failures | join(', ') }}"
+      vars:
+        _failures: "{{ replicaset_failures }}"
+
     - name: Verify MongoDB replicaset status
       ansible.builtin.assert:
         that:
           - (replicaset_members | length > 0) or (replicaset_aliens | length > 0)
-          - replicaset_failures | length == 0
           - (_voting_count | length > 2) and (_voting_count | length <= 7)
           - _non_voting_count | length <= 43
           - _all_defined_votes or _all_undefined_votes

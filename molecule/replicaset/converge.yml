@@ -1,6 +1,6 @@
 ---
 - name: Configure 3 replicaset nodes
-  hosts: "{{ ansible_play_batch }}"
+  hosts: "{{ ansible_play_hosts }}"
   tasks:
     - name: Create virtualenv
       ansible.builtin.tempfile:
@@ -34,7 +34,7 @@
           vars:
             _map_format: "nephelaiio.plugins.map_format"
             _addr_attrs: ["ansible_facts", "default_ipv4", "address"]
-            _addresses: "{{ ansible_play_batch | map('extract', hostvars, _addr_attrs) }}"
+            _addresses: "{{ ansible_play_hosts | map('extract', hostvars, _addr_attrs) }}"
             _members: "{{ _addresses | list }}"
             mongodb_replicaset_members: "{{ _members | map(_map_format, '%s:' + mongodb_port) | list }}"
 

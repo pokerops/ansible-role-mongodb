@@ -2,11 +2,6 @@
 - name: Reconfigure replica set
   hosts: all
   any_errors_fatal: true
-  vars:
-    _hosts1: "{{ ansible_play_batch[:1] }}"
-    _hosts3: "{{ ansible_play_batch[-3:] }}"
-    _hosts5: "{{ ansible_play_batch[:2] + ansible_play_batch[-3:] }}"
-    _hosts6: "{{ ansible_play_batch[:3] + ansible_play_batch[-3:] }}"
   tasks:
     - name: Manage python interpreter
       tags: always
@@ -46,16 +41,47 @@
             _addr_attrs: ["ansible_facts", "default_ipv4", "address"]
             _port: "{{ mongodb_port | default('27017') }}"
 
+        - name: Query replicaset membership
+          community.mongodb.mongodb_shell:
+            eval: "rs.isMaster()"
+          register: mongodb_rs
+          until: mongodb_rs is succeeded
+          changed_when: false
+
+        - name: Set replicaset primary facts
+          ansible.builtin.set_fact:
+            replicaset_is_primary: "{{ _is_primary }}"
+          vars:
+            _is_primary: "{{ mongodb_rs.transformed_output.ismaster | bool }}"
+
+        - name: Add to primary group
+          ansible.builtin.group_by:
+            key: "_primary6"
+          when: replicaset_is_primary | bool
+
+        - name: Create all hosts
+          ansible.builtin.group_by:
+            key: "_all"
+
+        - name: Add current primary host to group
+          ansible.builtin.set_fact:
+            _running_hosts: "{{ _hosts if (_hosts_primary | length > 0) else _hosts_added }}"
+          vars:
+            _hosts: "{{ groups['_all'][:6] }}"
+            _group: "{{ groups['_primary6'] | default([]) }}"
+            _hosts_primary: "{{ _hosts | select('in', _group) }}"
+            _hosts_added: "{{ _hosts[:5] + [inventory_hostname] }}"
+
     - name: Test replicaset reconfiguration scenarios
       block:
         - name: Scale down to 6 node cluster
-          when: inventory_hostname in _hosts6
+          when: inventory_hostname in _running_hosts
           block:
             - name: Scale down to 6 node cluster
               ansible.builtin.set_fact:
                 _config_members: "{{ _members | map(_map_format, '%s:' + _port) | list }}"
               vars:
-                _addresses: "{{ _hosts6 | map('extract', hostvars, _addr_attrs) }}"
+                _addresses: "{{ _running_hosts | map('extract', hostvars, _addr_attrs) }}"
                 _members: "{{ _addresses | list }}"
               delegate_to: localhost
               delegate_facts: true
@@ -64,7 +90,7 @@
               ansible.builtin.include_role:
                 name: pokerops.mongodb
               vars:
-                mongodb_replicaset_hosts: "{{ _hosts6 }}"
+                mongodb_replicaset_hosts: "{{_running_hosts }}"
                 mongodb_replicaset_members: "{{ hostvars['localhost']['_config_members'] }}"
                 mongodb_votes_group: "_replicaset_votes_in_six"
                 mongodb_non_votes_group: "_replicaset_non_votes_in_six"
@@ -107,14 +133,41 @@
             _config_list: "{{ hostvars['localhost']['_config_members'] }}"
             _existing_list: "{{ hostvars['localhost']['_existing_members'] }}"
 
+        - name: Query replicaset membership
+          community.mongodb.mongodb_shell:
+            eval: "rs.isMaster()"
+          register: mongodb_rs
+          until: mongodb_rs is succeeded
+          changed_when: false
+
+        - name: Set replicaset primary facts
+          ansible.builtin.set_fact:
+            replicaset_is_primary: "{{ _is_primary }}"
+          vars:
+            _is_primary: "{{ mongodb_rs.transformed_output.ismaster | bool }}"
+
+        - name: Add to primary group
+          ansible.builtin.group_by:
+            key: "_primary5"
+          when: replicaset_is_primary | bool
+
+        - name: Add current primary host to group
+          ansible.builtin.set_fact:
+            _running_hosts: "{{ _hosts if (_hosts_primary | length > 0) else _hosts_added }}"
+          vars:
+            _hosts: "{{ groups['_all'][:5] }}"
+            _group: "{{ groups['_primary5'] | default([]) }}"
+            _hosts_primary: "{{ _hosts | select('in', _group) }}"
+            _hosts_added: "{{ _hosts[:4] + [inventory_hostname] }}"
+
         - name: Scale down to 5 node cluster
-          when: inventory_hostname in _hosts5
+          when: inventory_hostname in _running_hosts
           block:
             - name: Scale down to 5 node cluster
               ansible.builtin.set_fact:
                 _config_members: "{{ _members | map(_map_format, '%s:' + _port) | list }}"
               vars:
-                _addresses: "{{ _hosts5 | map('extract', hostvars, _addr_attrs) }}"
+                _addresses: "{{_running_hosts | map('extract', hostvars, _addr_attrs) }}"
                 _members: "{{ _addresses | list }}"
               delegate_to: localhost
               delegate_facts: true
@@ -123,7 +176,7 @@
               ansible.builtin.include_role:
                 name: pokerops.mongodb
               vars:
-                mongodb_replicaset_hosts: "{{ _hosts5 }}"
+                mongodb_replicaset_hosts: "{{_running_hosts }}"
                 mongodb_replicaset_members: "{{ hostvars['localhost']['_config_members'] }}"
                 mongodb_votes_group: "_replicaset_votes_in_five"
                 mongodb_non_votes_group: "_replicaset_non_votes_in_five"
@@ -166,14 +219,41 @@
             _config_list: "{{ hostvars['localhost']['_config_members'] }}"
             _existing_list: "{{ hostvars['localhost']['_existing_members'] }}"
 
+        - name: Query replicaset membership
+          community.mongodb.mongodb_shell:
+            eval: "rs.isMaster()"
+          register: mongodb_rs
+          until: mongodb_rs is succeeded
+          changed_when: false
+
+        - name: Set replicaset primary facts
+          ansible.builtin.set_fact:
+            replicaset_is_primary: "{{ _is_primary }}"
+          vars:
+            _is_primary: "{{ mongodb_rs.transformed_output.ismaster | bool }}"
+
+        - name: Add to primary group
+          ansible.builtin.group_by:
+            key: "_primary3"
+          when: replicaset_is_primary | bool
+
+        - name: Add current primary host to group
+          ansible.builtin.set_fact:
+            _running_hosts: "{{ _hosts if (_hosts_primary | length > 0) else _hosts_added }}"
+          vars:
+            _hosts: "{{ groups['_all'][:3] }}"
+            _group: "{{ groups['_primary3'] | default([]) }}"
+            _hosts_primary: "{{ _hosts | select('in', _group) }}"
+            _hosts_added: "{{ _hosts[:2] + [inventory_hostname] }}"
+
         - name: Attempt 3 node cluster scale down
-          when: inventory_hostname in _hosts3
+          when: inventory_hostname in _running_hosts
           block:
             - name: Scale down to 3 node cluster
               ansible.builtin.set_fact:
                 _config_members: "{{ _members | map(_map_format, '%s:' + _port) | list }}"
               vars:
-                _addresses: "{{ _hosts3 | map('extract', hostvars, _addr_attrs) }}"
+                _addresses: "{{_running_hosts | map('extract', hostvars, _addr_attrs) }}"
                 _members: "{{ _addresses | list }}"
               delegate_to: localhost
               delegate_facts: true
@@ -182,7 +262,7 @@
               ansible.builtin.include_role:
                 name: pokerops.mongodb
               vars:
-                mongodb_replicaset_hosts: "{{ _hosts3 }}"
+                mongodb_replicaset_hosts: "{{_running_hosts }}"
                 mongodb_replicaset_members: "{{ hostvars['localhost']['_config_members'] }}"
                 mongodb_votes_group: "_replicaset_votes_in_three"
                 mongodb_non_votes_group: "_replicaset_non_votes_in_three"
@@ -207,16 +287,41 @@
                 that: _reconfigure3_failed | bool
                 fail_msg: "broken replicaset member configuration operation must fail"
 
+        - name: Query replicaset membership
+          community.mongodb.mongodb_shell:
+            eval: "rs.isMaster()"
+          register: mongodb_rs
+          until: mongodb_rs is succeeded
+          changed_when: false
+
+        - name: Set replicaset primary facts
+          ansible.builtin.set_fact:
+            replicaset_is_primary: "{{ _is_primary }}"
+          vars:
+            _is_primary: "{{ mongodb_rs.transformed_output.ismaster | bool }}"
+
+        - name: Add to primary group
+          ansible.builtin.group_by:
+            key: "_primary1"
+          when: replicaset_is_primary | bool
+
+        - name: Add current primary host to group
+          ansible.builtin.set_fact:
+            _running_hosts: "{{ _hosts }}"
+          vars:
+            _group: "{{ groups['_primary1'] | default([]) }}"
+            _hosts: "{{ _hosts | select('in', _group) }}"
+
         - name: Attempt 1 node cluster scale down
-          when: inventory_hostname in _hosts1
+          when: inventory_hostname in _running_hosts
           block:
             - name: Attempt 1 node cluster scale in
               ansible.builtin.include_role:
                 name: pokerops.mongodb
               vars:
-                _addresses: "{{ _hosts1 | map('extract', hostvars, _addr_attrs) }}"
+                _addresses: "{{ _running_hosts | map('extract', hostvars, _addr_attrs) }}"
                 _members: "{{ _addresses | list }}"
-                mongodb_replicaset_hosts: "{{ _hosts1 }}"
+                mongodb_replicaset_hosts: "{{ _running_hosts }}"
                 mongodb_replicaset_members: "{{ _members | map(_map_format, '%s:' + mongodb_port) | list }}"
                 mongodb_votes_group: "_replicaset_votes_in_one"
                 mongodb_non_votes_group: "_replicaset_non_votes_in_one"
