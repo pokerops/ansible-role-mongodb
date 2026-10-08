@@ -15,15 +15,15 @@
         _string_votes_failed: false
         _map_format: "{{ map_format }}"
         _addr_attrs: "{{ addr_attrs }}"
-        _non_voting_1: "{{ play_hosts[:1] }}"
-        _non_voting_3: "{{ play_hosts[:3] }}"
-        _non_voting_4: "{{ play_hosts[-4:] }}"
-        _non_voting_6: "{{ play_hosts[-6:] }}"
+        _non_voting_1: "{{ ansible_play_hosts[:1] }}"
+        _non_voting_3: "{{ ansible_play_hosts[:3] }}"
+        _non_voting_4: "{{ ansible_play_hosts[-4:] }}"
+        _non_voting_6: "{{ ansible_play_hosts[-6:] }}"
         _mongodb_port: "{{ _port }}"
         mongodb_replicaset_members: "{{ _rs_members | map(map_format, '%s:' + _port) | list }}"
       vars:
-        _rs_addresses: "{{ play_hosts | map('extract', hostvars, addr_attrs) }}"
-        addr_attrs: ["ansible_default_ipv4", "address"]
+        _rs_addresses: "{{ ansible_play_hosts | map('extract', hostvars, addr_attrs) }}"
+        addr_attrs: ["ansible_facts", "default_ipv4", "address"]
         map_format: "nephelaiio.plugins.map_format"
         _rs_members: "{{ _rs_addresses | list }}"
         _port: "{{ mongodb_port | default('27017') }}"
@@ -43,6 +43,10 @@
           - python-gnupg
         virtualenv: "{{ _virtualenv_tmpdir.path }}/venv"
       changed_when: false
+
+    - name: Record python interpreter
+      ansible.builtin.set_fact:
+        _environment_python: "{{ ansible_facts.python.executable }}"
 
     - name: Change python interpreter
       ansible.builtin.set_fact:
@@ -72,9 +76,9 @@
                 replicaset_primary_before: "{{ _primary_host }}"
               vars:
                 _primary: "{{ mongodb_rs.transformed_output.primary | split(':') | first }}"
-                _hosts: "{{ play_hosts }}"
+                _hosts: "{{ ansible_play_hosts }}"
                 _revaddrs: "{{ _host_addrs | zip(_hosts) | community.general.dict }}"
-                _host_addrs: "{{ _hosts | map('extract', hostvars, ['ansible_default_ipv4', 'address']) }}"
+                _host_addrs: "{{ _hosts | map('extract', hostvars, _addr_attrs) }}"
                 _primary_host: "{{ _revaddrs[_primary] }}"
 
             - name: Set replicaset primary facts
@@ -135,9 +139,9 @@
                 replicaset_primary_after: "{{ _primary_host }}"
               vars:
                 _primary: "{{ mongodb_rs.transformed_output.primary | split(':') | first }}"
-                _hosts: "{{ play_hosts }}"
+                _hosts: "{{ ansible_play_hosts }}"
                 _revaddrs: "{{ _host_addrs | zip(_hosts) | community.general.dict }}"
-                _host_addrs: "{{ _hosts | map('extract', hostvars, ['ansible_default_ipv4', 'address']) }}"
+                _host_addrs: "{{ _hosts | map('extract', hostvars, _addr_attrs) }}"
                 _primary_host: "{{ _revaddrs[_primary] }}"
 
             - name: Debug MongoDB primary before votes change
@@ -167,9 +171,9 @@
                 mongodb_priority: "{{ _priority }}"
               vars:
                 _primary: "{{ mongodb_rs.transformed_output.primary | split(':') | first }}"
-                _hosts: "{{ play_hosts }}"
+                _hosts: "{{ ansible_play_hosts }}"
                 _revaddrs: "{{ _host_addrs | zip(_hosts) | community.general.dict }}"
-                _host_addrs: "{{ _hosts | map('extract', hostvars, ['ansible_default_ipv4', 'address']) }}"
+                _host_addrs: "{{ _hosts | map('extract', hostvars, _addr_attrs) }}"
                 _primary_host: "{{ inventory_hostname == _revaddrs[_primary] }}"
                 _votes: "{{ 1 if (not inventory_hostname in _non_voting_6 or _primary_host) else 0 }}"
                 _priority: "{{ 1 if (not inventory_hostname in _non_voting_6 or _primary_host) else 0 }}"
@@ -269,9 +273,9 @@
                 mongodb_priority: "{{ _priority }}"
               vars:
                 _primary: "{{ mongodb_rs.transformed_output.primary | split(':') | first }}"
-                _hosts: "{{ play_hosts }}"
+                _hosts: "{{ ansible_play_hosts }}"
                 _revaddrs: "{{ _host_addrs | zip(_hosts) | community.general.dict }}"
-                _host_addrs: "{{ _hosts | map('extract', hostvars, ['ansible_default_ipv4', 'address']) }}"
+                _host_addrs: "{{ _hosts | map('extract', hostvars, _addr_attrs) }}"
                 _primary_host: "{{ inventory_hostname == _revaddrs[_primary] }}"
                 _votes: "{{ 1 if (not inventory_hostname in _non_voting_4 or _primary_host) else 0 }}"
                 _priority: "{{ 1 if (not inventory_hostname in _non_voting_4 or _primary_host) else 0 }}"
@@ -477,9 +481,9 @@
                 mongodb_priority: "{{ _priority }}"
               vars:
                 _primary: "{{ mongodb_rs.transformed_output.primary | split(':') | first }}"
-                _hosts: "{{ play_hosts }}"
+                _hosts: "{{ ansible_play_hosts }}"
                 _revaddrs: "{{ _host_addrs | zip(_hosts) | community.general.dict }}"
-                _host_addrs: "{{ _hosts | map('extract', hostvars, ['ansible_default_ipv4', 'address']) }}"
+                _host_addrs: "{{ _hosts | map('extract', hostvars, _addr_attrs) }}"
                 _primary_host: "{{ inventory_hostname == _revaddrs[_primary] }}"
                 _votes: "{{ 1 if (not inventory_hostname in _non_voting_3 or _primary_host) else 0 }}"
                 _priority: "{{ 1 if (not inventory_hostname in _non_voting_3 or _primary_host) else 0 }}"
@@ -527,3 +531,14 @@
                 _addresses: "{{ _non_voting_3 | map('extract', hostvars, _addr_attrs) }}"
                 _members: "{{ _non_voters | map(attribute='host') }}"
                 _members_list: "{{ _members | map('split', ':') | map('first') }}"
+
+      always:
+        - name: Restore python interpreter
+          ansible.builtin.set_fact:
+            ansible_python_interpreter: "{{ _environment_python }}"
+
+        - name: Destroy virtualenv
+          ansible.builtin.file:
+            path: "{{ _virtualenv_tmpdir.path }}"
+            state: absent
+          changed_when: false

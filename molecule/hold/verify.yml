@@ -8,23 +8,29 @@
         cmd: "apt-cache madison {{ item }} | awk -F'|' '{ print $2 }'"
       loop: "{{ mongodb_packages }}"
       register: _debian_package_query
-      when: ansible_os_family == 'Debian'
+      when: ansible_facts.os_family == 'Debian'
       changed_when: false
+      tags: skip_ansible_lint
 
     - name: Query RedHat package versions
       ansible.builtin.shell:
         cmd: "yum list {{ item }} --showduplicates | grep '^{{ item }}' | awk '{ print $1,$2 }' | sort -r"
       loop: "{{ mongodb_packages }}"
       register: _redhat_package_query
-      when: ansible_os_family == "RedHat"
+      when: ansible_facts.os_family == "RedHat"
       changed_when: false
+      tags: skip_ansible_lint
 
     - name: Set package version facts
       ansible.builtin.set_fact:
         _mongodb_package_query: "{{ _redhat_packages + _debian_packages }}"
       vars:
-        _redhat_packages: "{{ [] if _redhat_package_query.skipped else _redhat_package_query.results }}"
-        _debian_packages: "{{ [] if _debian_package_query.skipped else _debian_package_query.results }}"
+        _redhat_results: "{{ _redhat_package_query.results | default([]) }}"
+        _debian_results: "{{ _debian_package_query.results | default([]) }}"
+        _debian_skipped: "{{ _debian_package_query.skipped | default('false') | bool }}"
+        _redhat_skipped: "{{ _redhat_package_query.skipped | default('false') | bool }}"
+        _redhat_packages: "{{ [] if _redhat_skipped else _redhat_results }}"
+        _debian_packages: "{{ [] if _debian_skipped else _debian_results }}"
 
     - name: Initialize package versions
       ansible.builtin.set_fact:
@@ -41,7 +47,7 @@
       loop_control:
         label: "{{ item.item }}"
       loop: "{{ _mongodb_package_query }}"
-      when: ansible_os_family == "Debian"
+      when: ansible_facts.os_family == "Debian"
 
     - name: Set target RedHat package versions
       ansible.builtin.set_fact:
@@ -57,12 +63,12 @@
       loop_control:
         label: "{{ item.item }}"
       loop: "{{ _mongodb_package_query }}"
-      when: ansible_os_family == "RedHat"
+      when: ansible_facts.os_family == "RedHat"
 
     - name: Gather package facts
       ansible.builtin.package_facts:
 
-    - name: Verify package versions
+    - name: Verify debian package versions
       ansible.builtin.assert:
         that:
           - _package in packages
@@ -76,9 +82,9 @@
       loop_control:
         label: "{{ _package }}"
       loop: "{{ mongodb_package_list }}"
-      when: ansible_os_family == "Debian"
+      when: ansible_facts.os_family == "Debian"
 
-    - name: Verify package versions
+    - name: Verify redhat package versions
       ansible.builtin.assert:
         that:
           - _package in packages
@@ -94,4 +100,4 @@
       loop_control:
         label: "{{ _package }}"
       loop: "{{ mongodb_packages | zip(mongodb_package_list) }}"
-      when: ansible_os_family == "RedHat"
+      when: ansible_facts.os_family == "RedHat"

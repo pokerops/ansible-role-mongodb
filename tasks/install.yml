@@ -15,11 +15,12 @@
         _group_default: "{{ mongodb_group_default | nephelaiio.plugins.sorted_get(overrides) }}"
         _storage_default: "{{ mongodb_storage_dbpath_default | nephelaiio.plugins.sorted_get(overrides) }}"
         _log_default: "{{ mongodb_log_path_default | nephelaiio.plugins.sorted_get(overrides) }}"
+        _distro: "{{ ansible_facts.distribution }}"
         overrides:
-          - "{{ ansible_distribution | lower }}-{{ ansible_distribution_release | lower }}"
-          - "{{ ansible_distribution | lower }}-{{ ansible_distribution_major_version }}"
-          - "{{ ansible_distribution | lower }}"
-          - "{{ ansible_os_family | lower }}"
+          - "{{ _distro | lower }}-{{ ansible_facts.distribution_release | lower }}"
+          - "{{ _distro | lower }}-{{ ansible_facts.distribution_major_version }}"
+          - "{{ _distro | lower }}"
+          - "{{ ansible_facts.os_family | lower }}"
           - "default"
 
     - name: Verify MongoDB pre-requisites
@@ -77,8 +78,8 @@
         name: "{{ _mongodb_packages }}"
       retries: "{{ mongodb_install_retries }}"
       delay: "{{ mongodb_install_delay }}"
-      register: mongodb_install
-      until: mongodb_install is succeeded
+      register: mongodb_install_output
+      until: mongodb_install_output is succeeded
 
   always:
     - name: Configure package holds
@@ -99,14 +100,13 @@
       vars:
         _votes: "{{ mongodb_votes | default(1) }}"
         _initial_sync: "{{ 'primaryPreferred' if (_votes | int == 1) else 'secondary' }}"
-      notify: Restart MongoDB
-      register: config_manage
+      register: mongodb_config_output
 
     - name: Gather service facts
       ansible.builtin.service_facts:
 
     - name: Manage firewall
-      when: ('ufw' in services) or ('ufw.service' in services)
+      when: ('ufw' in ansible_facts.services) or ('ufw.service' in ansible_facts.services)
       block:
         - name: Configure ufw access rules
           when: mongodb_firewall_state != "stopped"
@@ -132,9 +132,11 @@
                 _mongodb_addresses_list: "{{ _addr_list + [_default_address] | list | unique }}"
               vars:
                 _addr_list: "{{ mongodb_src_addresses_list }}"
-                _network: "{{ ansible_default_ipv4.network }}"
-                _prefix: "{{ ansible_default_ipv4.prefix }}"
+                _ipv4: "{{ ansible_facts.default_ipv4 }}"
+                _network: "{{ _ipv4.network }}"
+                _prefix: "{{ _ipv4.prefix }}"
                 _default_address: "{{ _network }}/{{ _prefix }}"
+              tags: skip_ansible_lint
 
             - name: Configure MongoDB firewall access
               community.general.ufw:
@@ -172,3 +174,5 @@
 
 - name: Include service tasks
   ansible.builtin.include_tasks: service.yml
+  loop: "{{ mongodb_replicaset_hosts | default(ansible_play_hosts) }}"
+  run_once: true

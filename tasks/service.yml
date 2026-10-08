@@ -1,5 +1,6 @@
 ---
 - name: Manage MongoDB services
+  delegate_to: "{{ item }}"
   block:
     - name: Manage MongoDB service
       ansible.builtin.service:
@@ -7,8 +8,14 @@
         state: "{{ mongodb_service_state }}"
         enabled: "{{ mongodb_service_enabled }}"
 
-    - name: Flush handlers
-      ansible.builtin.meta: flush_handlers
+    - name: Restart MongoDB
+      ansible.builtin.service:
+        name: "{{ mongodb_service_name }}"
+        state: restarted
+      vars:
+        _install_output: "{{ mongodb_install_output.changed | default('false') | bool }}"
+        _config_output: "{{ mongodb_config_output.changed | default('false') | bool }}"
+      when: _install_output or _config_output
 
     - name: Wait for MongoDB to be up
       community.mongodb.mongodb_shell:

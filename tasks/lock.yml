@@ -1,6 +1,6 @@
 ---
 - name: Manage debian package locks
-  when: ansible_os_family == "Debian"
+  when: ansible_facts.os_family == "Debian"
   block:
     - name: Query installed packages
       ansible.builtin.package_facts:
@@ -20,7 +20,7 @@
       changed_when: false
 
 - name: Manage yum package locks
-  when: ansible_os_family == "RedHat"
+  when: ansible_facts.os_family == "RedHat"
   block:
     - name: Install yum-plugin-versionlock
       ansible.builtin.package:

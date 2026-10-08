@@ -24,9 +24,18 @@
         virtualenv: "{{ _virtualenv_tmpdir.path }}/venv"
       changed_when: false
 
+    - name: Record python interpreter
+      ansible.builtin.set_fact:
+        _environment_python: "{{ ansible_facts.python.executable }}"
+
     - name: Change python interpreter
       ansible.builtin.set_fact:
         ansible_python_interpreter: "{{ _virtualenv_tmpdir.path }}/venv/bin/python"
+
+    - name: Set MongoDB default facts
+      ansible.builtin.set_fact:
+        _map_format: "nephelaiio.plugins.map_format"
+        _addr_attrs: ["ansible_facts", "default_ipv4", "address"]
 
     - name: Run reconfiguration tests
       block:
@@ -36,11 +45,9 @@
               ansible.builtin.include_role:
                 name: pokerops.mongodb
               vars:
-                _map_format: "nephelaiio.plugins.map_format"
-                _addr_attrs: ["ansible_default_ipv4", "address"]
-                _addresses: "{{ play_hosts | map('extract', hostvars, _addr_attrs) }}"
-                _members: "{{ _addresses | list }}"
-                mongodb_replicaset_members: "{{ _members | map(_map_format, '%s:' + mongodb_port) | list }}"
+                mongodb_addresses: "{{ ansible_play_hosts | map('extract', hostvars, _addr_attrs) }}"
+                mongodb_members: "{{ mongodb_addresses | list }}"
+                mongodb_replicaset_members: "{{ mongodb_members | map(_map_format, '%s:' + mongodb_port) | list }}"
                 mongodb_replicaset_name: edited
 
           rescue:
@@ -59,11 +66,9 @@
               ansible.builtin.include_role:
                 name: pokerops.mongodb
               vars:
-                _map_format: "nephelaiio.plugins.map_format"
-                _addr_attrs: ["ansible_default_ipv4", "address"]
-                _addresses: "{{ play_hosts | map('extract', hostvars, _addr_attrs) }}"
-                _members: "{{ _addresses | list }}"
-                mongodb_replicaset_members: "{{ _members | map(_map_format, '%s:' + mongodb_port) | list }}"
+                mongodb_addresses: "{{ ansible_play_hosts | map('extract', hostvars, _addr_attrs) }}"
+                mongodb_members: "{{ mongodb_addresses | list }}"
+                mongodb_replicaset_members: "{{ mongodb_members | map(_map_format, '%s:' + mongodb_port) | list }}"
 
           rescue:
             - name: Set result facts
@@ -81,11 +86,9 @@
               ansible.builtin.include_role:
                 name: pokerops.mongodb
               vars:
-                _map_format: "nephelaiio.plugins.map_format"
-                _addr_attrs: ["ansible_default_ipv4", "address"]
-                _addresses: "{{ play_hosts | map('extract', hostvars, _addr_attrs) }}"
-                _members: "{{ _addresses | list }}"
-                mongodb_replicaset_members: "{{ _members | map(_map_format, '%s:' + mongodb_port) | list }}"
+                mongodb_addresses: "{{ ansible_play_hosts | map('extract', hostvars, _addr_attrs) }}"
+                mongodb_members: "{{ mongodb_addresses | list }}"
+                mongodb_replicaset_members: "{{ mongodb_members | map(_map_format, '%s:' + mongodb_port) | list }}"
 
           rescue:
             - name: Set result facts
@@ -98,6 +101,10 @@
             fail_msg: "broken sharding role configuration operation must fail"
 
       always:
+        - name: Restore python interpreter
+          ansible.builtin.set_fact:
+            ansible_python_interpreter: "{{ _environment_python }}"
+
         - name: Destroy virtualenv
           ansible.builtin.file:
             path: "{{ _virtualenv_tmpdir.path }}"
