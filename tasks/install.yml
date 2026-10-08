@@ -78,9 +78,8 @@
         name: "{{ _mongodb_packages }}"
       retries: "{{ mongodb_install_retries }}"
       delay: "{{ mongodb_install_delay }}"
-      register: mongodb_install
-      until: mongodb_install is succeeded
-      notify: Restart MongoDB
+      register: mongodb_install_output
+      until: mongodb_install_output is succeeded
 
   always:
     - name: Configure package holds
@@ -101,8 +100,7 @@
       vars:
         _votes: "{{ mongodb_votes | default(1) }}"
         _initial_sync: "{{ 'primaryPreferred' if (_votes | int == 1) else 'secondary' }}"
-      notify: Restart MongoDB
-      register: config_manage
+      register: mongodb_config_output
 
     - name: Gather service facts
       ansible.builtin.service_facts:
