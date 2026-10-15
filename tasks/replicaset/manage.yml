@@ -156,8 +156,11 @@
             members: "{{ _host_members | zip(_votes_dict, _priorities_dict) | map('combine') }}"
             validate: false
           vars:
-            _hosts: "{{ _mongodb_hosts }}"
-            _host_members: "{{ mongodb_replicaset_members | map(_to_dict, 'host') }}"
+            _addr_attrs: ["ansible_facts", "default_ipv4", "address"]
+            _hosts: "{{ _mongodb_hosts | sort }}"
+            _members: "{{ _hosts | map('extract', hostvars, _addr_attrs) }}"
+            _members_port: "{{ _members | map(_map_format, '%s:' + mongodb_port) | list }}"
+            _host_members: "{{ _members_port | map(_to_dict, 'host') }}"
             _priorities: "{{ _hosts | map('extract', hostvars, ['_mongodb_priority']) }}"
             _priorities_dict: "{{ _priorities | map(_to_dict, 'priority') }}"
             _votes: "{{ _hosts | map('extract', hostvars, ['_mongodb_votes']) }}"
@@ -231,17 +234,25 @@
             _existing_members_list: "{{ _mongodb_config | map(attribute='host') }}"
             _delete_members: "{{ _existing_members_list | reject('in', _target_hostaddrs) }}"
 
+        - name: Compute MongoDB replicaset member facts
+          ansible.builtin.include_tasks: members.yml
+          vars:
+            _target_members: "{{ _mongodb_hosts }}"
+
         - name: Detect new voting and priorities
           ansible.builtin.set_fact:
             _mongodb_existing_members: "{{ _non_voting_filter if _max_voting_count else _voting_filter }}"
           vars:
+            _addr_attrs: ["ansible_facts", "default_ipv4", "address"]
             _existing_members_list: "{{ _mongodb_config }}"
-            _member_names: "{{ _existing_members_list | map(attribute='host') }}"
-            _hosts_filter: "{{ mongodb_replicaset_members | select('in', _member_names) }}"
-            _hosts: "{{ _hosts_filter | map(_to_dict, 'host') }}"
-            _votes: "{{ replicaset_members | map(_to_dict, 'votes') }}"
+            _hosts: "{{ _mongodb_hosts | select('in', _target_hostaddrs) | sort }}"
+            _members: "{{ _hosts | map('extract', hostvars, _addr_attrs) }}"
+            _members_port: "{{ _members | map(_map_format, '%s:' + mongodb_port) | list }}"
+            _host_members: "{{ _members_port | map(_to_dict, 'host') }}"
+            _votes: "{{ _hosts | map('extract', hostvars, ['_mongodb_votes']) }}"
+            _votes_dict: "{{ _votes | map(_to_dict, 'votes') }}"
             _max_voting_count: "{{ _existing_members_list | selectattr('votes', 'equalto', 1) | length >= 7 }}"
-            _replica_members: "{{ _hosts | zip(_votes) | map('combine') }}"
+            _replica_members: "{{ _host_members | zip(_votes_dict) | map('combine') }}"
             _voting_members: "{{ _replica_members | selectattr('votes', 'equalto', 1) }}"
             _non_voting_members: "{{ _replica_members | difference(_voting_members) }}"
             _non_voting_filter: "{{ _non_voting_members | zip_longest(_voting_members) | flatten | map(attribute='host') }}"
@@ -287,8 +298,11 @@
               ansible.builtin.debug:
                 msg: "{{ _new_votes }}"
               vars:
-                _hosts: "{{ _mongodb_hosts }}"
-                _host_members: "{{ mongodb_replicaset_members | map(_to_dict, 'host') }}"
+                _addr_attrs: ["ansible_facts", "default_ipv4", "address"]
+                _hosts: "{{ _mongodb_hosts | sort }}"
+                _members: "{{ _hosts | map('extract', hostvars, _addr_attrs) }}"
+                _members_port: "{{ _members | map(_map_format, '%s:' + mongodb_port) | list }}"
+                _host_members: "{{ _members_port | map(_to_dict, 'host') }}"
                 _priorities: "{{ _hosts | map('extract', hostvars, ['_mongodb_priority']) }}"
                 _priorities_dict: "{{ _priorities | map(_to_dict, 'priority') }}"
                 _votes: "{{ _hosts | map('extract', hostvars, ['_mongodb_votes']) }}"
