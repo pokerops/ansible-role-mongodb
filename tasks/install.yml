@@ -172,6 +172,15 @@
                 state: stopped
                 enabled: false
 
+- name: Group changed config members
+  ansible.builtin.group_by:
+    key: "_mongodb_change_config_{{ mongodb_change_config_suffix | default('install') }}"
+  vars:
+    _install_output: "{{ mongodb_install_output.changed | default('false') | bool }}"
+    _config_output: "{{ mongodb_config_output.changed | default('false') | bool }}"
+  when: _install_output or _config_output
+  changed_when: false
+
 - name: Include service tasks
   ansible.builtin.include_tasks: service.yml
   loop_control:

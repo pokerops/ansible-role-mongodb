@@ -13,9 +13,8 @@
         name: "{{ mongodb_service_name }}"
         state: restarted
       vars:
-        _install_output: "{{ mongodb_install_output.changed | default('false') | bool }}"
-        _config_output: "{{ mongodb_config_output.changed | default('false') | bool }}"
-      when: _install_output or _config_output
+        _group: "_mongodb_change_config_{{ mongodb_change_config_suffix | default('install') }}"
+      when: mongodb_running_server in _group
 
     - name: Wait for MongoDB to be up
       community.mongodb.mongodb_shell:
