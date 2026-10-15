@@ -13,7 +13,7 @@
         name: "{{ mongodb_service_name }}"
         state: restarted
       vars:
-        _group: "_mongodb_change_config_{{ mongodb_change_config_suffix | default('install') }}"
+        _group: "{{ groups[_mongodb_changed_config_group] | default([]) }}"
       when: mongodb_running_server in _group
 
     - name: Wait for MongoDB to be up
