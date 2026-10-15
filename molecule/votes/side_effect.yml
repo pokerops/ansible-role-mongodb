@@ -103,6 +103,7 @@
                 mongodb_non_alien_group: "_replicaset_non_alien_primary_priority"
                 mongodb_member_group: "_replicaset_member_primary_priority"
                 mongodb_failed_group: "_replicaset_failed_primary_priority"
+                mongodb_change_config_suffix: "primary_priority"
 
             - name: Set replicaset primary facts
               ansible.builtin.set_fact:
@@ -126,6 +127,7 @@
                 mongodb_non_alien_group: "_replicaset_non_alien_stepdown"
                 mongodb_member_group: "_replicaset_member_stepdown"
                 mongodb_failed_group: "_replicaset_failed_stepdown"
+                mongodb_change_config_suffix: "stepdown"
 
             - name: Query replicaset membership
               community.mongodb.mongodb_shell:
@@ -194,6 +196,7 @@
                 mongodb_non_alien_group: "_replicaset_non_alien_six"
                 mongodb_member_group: "_replicaset_member_six"
                 mongodb_failed_group: "_replicaset_failed_six"
+                mongodb_change_config_suffix: "six"
 
             - name: Query existing MongoDB replicaset config
               community.mongodb.mongodb_shell:
@@ -248,6 +251,7 @@
                 mongodb_non_alien_group: "_replicaset_non_alien_string"
                 mongodb_member_group: "_replicaset_member_string"
                 mongodb_failed_group: "_replicaset_failed_string"
+                mongodb_change_config_suffix: "string"
           rescue:
             - name: Set result facts
               ansible.builtin.set_fact:
@@ -296,6 +300,7 @@
                 mongodb_non_alien_group: "_replicaset_non_alien_four"
                 mongodb_member_group: "_replicaset_member_four"
                 mongodb_failed_group: "_replicaset_failed_four"
+                mongodb_change_config_suffix: "four"
 
             - name: Query existing MongoDB replicaset config
               community.mongodb.mongodb_shell:
@@ -354,6 +359,7 @@
                 mongodb_non_alien_group: "_replicaset_non_alien_mixed"
                 mongodb_member_group: "_replicaset_member_mixed"
                 mongodb_failed_group: "_replicaset_failed_mixed"
+                mongodb_change_config_suffix: "mixed"
           rescue:
             - name: Set result facts
               ansible.builtin.set_fact:
@@ -387,6 +393,7 @@
                 mongodb_non_alien_group: "_replicaset_non_alien_all"
                 mongodb_member_group: "_replicaset_member_all"
                 mongodb_failed_group: "_replicaset_failed_all"
+                mongodb_change_config_suffix: "all"
           rescue:
             - name: Set result facts
               ansible.builtin.set_fact:
@@ -420,6 +427,7 @@
                 mongodb_non_alien_group: "_replicaset_non_alien_greater"
                 mongodb_member_group: "_replicaset_member_greater"
                 mongodb_failed_group: "_replicaset_failed_greater"
+                mongodb_change_config_suffix: "greater"
           rescue:
             - name: Set result facts
               ansible.builtin.set_fact:
@@ -456,6 +464,7 @@
                 mongodb_non_alien_group: "_replicaset_non_alien_one"
                 mongodb_member_group: "_replicaset_member_one"
                 mongodb_failed_group: "_replicaset_failed_one"
+                mongodb_change_config_suffix: "one"
           rescue:
             - name: Set result facts
               ansible.builtin.set_fact:
@@ -504,6 +513,7 @@
                 mongodb_non_alien_group: "_replicaset_non_alien_two"
                 mongodb_member_group: "_replicaset_member_two"
                 mongodb_failed_group: "_replicaset_failed_two"
+                mongodb_change_config_suffix: two
 
             - name: Query existing MongoDB replicaset config
               community.mongodb.mongodb_shell:

@@ -104,6 +104,7 @@
                 mongodb_non_alien_group: "_replicaset_non_alien_in_six"
                 mongodb_member_group: "_replicaset_member_in_six"
                 mongodb_failed_group: "_replicaset_failed_in_six"
+                mongodb_change_config_suffix: "six"
 
             - name: Query existing MongoDB replicaset members
               community.mongodb.mongodb_shell:
@@ -190,6 +191,7 @@
                 mongodb_non_alien_group: "_replicaset_non_alien_in_five"
                 mongodb_member_group: "_replicaset_member_in_five"
                 mongodb_failed_group: "_replicaset_failed_in_five"
+                mongodb_change_config_suffix: "five"
 
             - name: Query existing MongoDB replicaset members
               community.mongodb.mongodb_shell:
@@ -276,6 +278,7 @@
                 mongodb_non_alien_group: "_replicaset_non_alien_in_three"
                 mongodb_member_group: "_replicaset_member_in_three"
                 mongodb_failed_group: "_replicaset_failed_in_three"
+                mongodb_change_config_suffix: "three"
 
           rescue:
             - name: Set result facts
@@ -334,6 +337,7 @@
                 mongodb_non_alien_group: "_replicaset_non_alien_in_one"
                 mongodb_member_group: "_replicaset_member_in_one"
                 mongodb_failed_group: "_replicaset_failed_in_one"
+                mongodb_change_config_suffix: "one"
           rescue:
             - name: Set result facts
               ansible.builtin.set_fact:
