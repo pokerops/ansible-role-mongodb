@@ -137,6 +137,7 @@
         _revaddrs: "{{ _host_addrs | zip(_hosts) | community.general.dict }}"
         _fwdaddrs: "{{ _hosts | zip(_host_addrs) | community.general.dict }}"
         _to_dict: "nephelaiio.plugins.to_dict"
+        _map_format: "nephelaiio.plugins.map_format"
         _split_with: "nephelaiio.plugins.split_with"
         _select_attrs: "nephelaiio.plugins.select_attributes"
       vars:
