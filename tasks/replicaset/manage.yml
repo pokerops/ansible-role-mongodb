@@ -136,7 +136,7 @@
       ansible.builtin.set_fact:
         _revaddrs: "{{ _host_addrs | zip(_hosts) | community.general.dict }}"
         _fwdaddrs: "{{ _hosts | zip(_host_addrs) | community.general.dict }}"
-        _map_format: "nephelaiio.plugins.map_format"
+        _to_dict: "nephelaiio.plugins.to_dict"
         _split_with: "nephelaiio.plugins.split_with"
         _select_attrs: "nephelaiio.plugins.select_attributes"
       vars:
@@ -153,19 +153,15 @@
         - name: Create MongoDB replicaset
           community.mongodb.mongodb_replicaset:
             replica_set: "{{ mongodb_replicaset_name }}"
-            members: "{{ _hosts_json | zip(_votes_json, _priorities_json) | map('combine') }}"
+            members: "{{ _host_members | zip(_votes_dict, _priorities_dict) | map('combine') }}"
             validate: false
           vars:
             _hosts: "{{ _mongodb_hosts }}"
-            _host_members: "[{{ mongodb_replicaset_members | map(_map_format, _host_format) | join(',') }}]"
-            _host_format: '{ "host": "%s" }'
-            _priorities: "[{{ _hosts | map('extract', hostvars, ['_mongodb_priority']) | map(_map_format, _priority_format) | join(',') }}]"
-            _priority_format: '{ "priority": %s }'
-            _votes_format: '{ "votes": %s }'
-            _votes: "[{{ _hosts | map('extract', hostvars, ['_mongodb_votes']) | map(_map_format, _votes_format) | join(',') }}]"
-            _votes_json: "{{ _votes | from_json }}"
-            _priorities_json: "{{ _priorities | from_json }}"
-            _hosts_json: "{{ _host_members | from_json }}"
+            _host_members: "{{ mongodb_replicaset_members | map(_to_dict, 'host') }}"
+            _priorities: "{{ _hosts | map('extract', hostvars, ['_mongodb_priority']) }}"
+            _priorities_dict: "{{ _priorities | map(_to_dict, 'priority') }}"
+            _votes: "{{ _hosts | map('extract', hostvars, ['_mongodb_votes']) }}"
+            _votes_dict: "{{ _votes | map(_to_dict, 'votes') }}"
 
         - name: Wait for replicaset to stabilize
           community.mongodb.mongodb_status:
@@ -242,14 +238,10 @@
             _existing_members_list: "{{ _mongodb_config }}"
             _member_names: "{{ _existing_members_list | map(attribute='host') }}"
             _hosts_filter: "{{ mongodb_replicaset_members | select('in', _member_names) }}"
-            _hosts: "[{{ _hosts_filter | map(_map_format, _hosts_format) | join(',') }}]"
-            _hosts_format: '{ "host": "%s" }'
-            _votes: "[{{ replicaset_members | map('extract', hostvars, ['_mongodb_votes']) | map(_map_format, _votes_format) | join(',') }}]"
-            _votes_format: '{ "votes": %s }'
+            _hosts: "{{ _hosts_filter | map(_to_dict, 'host') }}"
+            _votes: "{{ replicaset_members | map(_to_dict, 'votes') }}"
             _max_voting_count: "{{ _existing_members_list | selectattr('votes', 'equalto', 1) | length >= 7 }}"
-            _votes_json: "{{ _votes | from_json }}"
-            _hosts_json: "{{ _hosts | from_json }}"
-            _replica_members: "{{ _hosts_json | zip(_votes_json) | map('combine') }}"
+            _replica_members: "{{ _hosts | zip(_votes) | map('combine') }}"
             _voting_members: "{{ _replica_members | selectattr('votes', 'equalto', 1) }}"
             _non_voting_members: "{{ _replica_members | difference(_voting_members) }}"
             _non_voting_filter: "{{ _non_voting_members | zip_longest(_voting_members) | flatten | map(attribute='host') }}"
@@ -296,16 +288,12 @@
                 msg: "{{ _new_votes }}"
               vars:
                 _hosts: "{{ _mongodb_hosts }}"
-                _host_members: "[{{ mongodb_replicaset_members | map(_map_format, _host_format) | join(',') }}]"
-                _host_format: '{ "host": "%s" }'
-                _priorities: "[{{ _hosts | map('extract', hostvars, ['_mongodb_priority']) | map(_map_format, _priority_format) | join(',') }}]"
-                _priority_format: '{ "priority": "%s" }'
-                _votes_format: '{ "votes": "%s" }'
-                _votes: "[{{ _hosts | map('extract', hostvars, ['_mongodb_votes']) | map(_map_format, _votes_format) | join(',') }}]"
-                _votes_json: "{{ _votes | from_json }}"
-                _hosts_json: "{{ _host_members | from_json }}"
-                _priorities_json: "{{ _priorities | from_json }}"
-                _new_votes: "{{ _hosts_json | zip(_votes_json, _priorities_json) | map('combine') }}"
+                _host_members: "{{ mongodb_replicaset_members | map(_to_dict, 'host') }}"
+                _priorities: "{{ _hosts | map('extract', hostvars, ['_mongodb_priority']) }}"
+                _priorities_dict: "{{ _priorities | map(_to_dict, 'priority') }}"
+                _votes: "{{ _hosts | map('extract', hostvars, ['_mongodb_votes']) }}"
+                _votes_dict: "{{ _votes | map(_to_dict, 'votes') }}"
+                _new_votes: "{{ _host_members | zip(_votes_dict, _priorities_dict) | map('combine') }}"
 
             - name: Remove stale MongoDB replicaset members
               ansible.builtin.include_tasks: "reconfigure.yml"
