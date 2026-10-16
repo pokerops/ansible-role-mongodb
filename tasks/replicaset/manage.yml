@@ -247,7 +247,7 @@
             _votes: "{{ replicaset_members | map('extract', hostvars, ['_mongodb_votes']) }}"
             _votes_dict: "{{ _votes | map(_to_dict, 'votes') }}"
             _max_voting_count: "{{ _existing_members | selectattr('votes', 'equalto', 1) | length >= 7 }}"
-            _replica_members: "{{ _host_members | zip(_votes_dict) | map('combine') }}"
+            _replica_members: "{{ _hosts_dict | zip(_votes_dict) | map('combine') }}"
             _voting_members: "{{ _replica_members | selectattr('votes', 'equalto', 1) }}"
             _non_voting_members: "{{ _replica_members | difference(_voting_members) }}"
             _non_voting_filter: "{{ _non_voting_members | zip_longest(_voting_members) | flatten | map(attribute='host') }}"
@@ -294,12 +294,12 @@
                 msg: "{{ _new_votes }}"
               vars:
                 _hosts: "{{ _mongodb_hosts | sort }}"
-                _host_members: "{{ mongodb_replicaset_members | map(_to_dict, 'host') }}"
+                _hosts_dict: "{{ mongodb_replicaset_members | map(_to_dict, 'host') }}"
                 _priorities: "{{ _hosts | map('extract', hostvars, ['_mongodb_priority']) }}"
                 _priorities_dict: "{{ _priorities | map(_to_dict, 'priority') }}"
                 _votes: "{{ _hosts | map('extract', hostvars, ['_mongodb_votes']) }}"
                 _votes_dict: "{{ _votes | map(_to_dict, 'votes') }}"
-                _new_votes: "{{ _host_members | zip(_votes_dict, _priorities_dict) | map('combine') }}"
+                _new_votes: "{{ _hosts_dict | zip(_votes_dict, _priorities_dict) | map('combine') }}"
 
             - name: Remove stale MongoDB replicaset members
               ansible.builtin.include_tasks: "reconfigure.yml"
