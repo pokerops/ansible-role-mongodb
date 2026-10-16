@@ -154,12 +154,11 @@
         - name: Create MongoDB replicaset
           community.mongodb.mongodb_replicaset:
             replica_set: "{{ mongodb_replicaset_name }}"
-            members: "{{ _members | zip(_votes_dict, _priorities_dict) | map('combine') }}"
+            members: "{{ _members_dict | zip(_votes_dict, _priorities_dict) | map('combine') }}"
             validate: false
           vars:
-            _addr_attrs: ["ansible_facts", "default_ipv4", "address"]
             _hosts: "{{ _mongodb_hosts | sort }}"
-            _members: "{{ mongodb_replicaset_members | map(_to_dict, 'host') }}"
+            _members_dict: "{{ mongodb_replicaset_members | map(_to_dict, 'host') }}"
             _priorities: "{{ _hosts | map('extract', hostvars, ['_mongodb_priority']) }}"
             _priorities_dict: "{{ _priorities | map(_to_dict, 'priority') }}"
             _votes: "{{ _hosts | map('extract', hostvars, ['_mongodb_votes']) }}"
