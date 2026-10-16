@@ -241,7 +241,7 @@
           ansible.builtin.set_fact:
             _mongodb_existing_members: "{{ _non_voting_filter if _max_voting_count else _voting_filter }}"
           vars:
-            _existing_members: "{{ _mongodb_config | sort }}"
+            _existing_members: "{{ _mongodb_config }}"
             _hosts: "{{ mongodb_replicaset_members | select('in', _target_hostaddrs) }}"
             _hosts_dict: "{{ _hosts | map(_to_dict, 'host') }}"
             _votes: "{{ replicaset_members | map('extract', hostvars, ['_mongodb_votes']) }}"
