@@ -172,17 +172,12 @@
                 state: stopped
                 enabled: false
 
-- name: Set MongoDB changed config group name fact
-  ansible.builtin.set_fact:
-    _mongodb_changed_config_group: "{{ _group }}"
+- name: Group changed config members
+  ansible.builtin.group_by:
+    key: "{{ _group }}"
   vars:
     _suffix: "{{ mongodb_change_config_suffix | default('install') }}"
     _group: "_mongodb_change_config_{{ _suffix }}"
-
-- name: Group changed config members
-  ansible.builtin.group_by:
-    key: "{{ _mongodb_changed_config_group }}"
-  vars:
     _install_output: "{{ mongodb_install_output.changed | default('false') | bool }}"
     _config_output: "{{ mongodb_config_output.changed | default('false') | bool }}"
   when: _install_output or _config_output
