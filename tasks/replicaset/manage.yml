@@ -236,7 +236,7 @@
         - name: Compute MongoDB replicaset member facts
           ansible.builtin.include_tasks: members.yml
           vars:
-            _target_members: "{{ _mongodb_config }}"
+            _target_members: "{{ _mongodb_hosts }}"
 
         - name: Detect new voting and priorities
           ansible.builtin.set_fact:
